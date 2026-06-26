@@ -1,0 +1,1 @@
+# VLM-NSM language module — online Qwen parser integration

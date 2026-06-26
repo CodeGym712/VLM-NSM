@@ -1,0 +1,52 @@
+# Final Language Model Comparison
+
+| Model | Task | Prompt | Samples | JSON Parse | Schema Valid | Alignment | Goal Success | Avg Time | Avg Tokens |
+|-------|:---:|:------:|:-------:|:----------:|:------------:|:---------:|:------------:|:--------:|:----------:|
+| qwen25_14b | hanoi | full | 0 | — | — | — | — | 38.9s | 84 |
+| qwen25_14b | hanoi | medium | 0 | — | — | — | — | 16.9s | 186 |
+| qwen25_14b | hanoi | full | 0 | — | — | — | — | 5.6s | 84 |
+| qwen25_14b | hanoi | medium | 0 | — | — | — | — | 9.8s | 148 |
+| qwen25_14b | hanoi | full | 0 | — | — | — | — | 5.5s | 84 |
+| qwen25_14b | hanoi | medium | 0 | — | — | — | — | 19.6s | 302 |
+| qwen25_14b | hanoi | full | 0 | — | — | — | — | 5.5s | 84 |
+| qwen25_14b | hanoi | medium | 0 | — | — | — | — | 21.6s | 327 |
+| qwen25_14b | hanoi | full | 0 | — | — | — | — | 5.4s | 84 |
+| qwen25_14b | hanoi | medium | 0 | — | — | — | — | 18.1s | 272 |
+| qwen25_14b | hanoi | full | 0 | — | — | — | — | 5.5s | 84 |
+| qwen25_14b | hanoi | medium | 0 | — | — | — | — | 17.7s | 224 |
+| qwen25_14b | stacking | full | 0 | — | — | — | — | 7.1s | 82 |
+| qwen25_14b | stacking | medium | 0 | — | — | — | — | 7.7s | 109 |
+| qwen25_14b | stacking | full | 0 | — | — | — | — | 6.1s | 82 |
+| qwen25_14b | stacking | medium | 0 | — | — | — | — | 6.1s | 101 |
+| qwen25_14b | stacking | full | 0 | — | — | — | — | 6.5s | 85 |
+| qwen25_14b | stacking | medium | 0 | — | — | — | — | 7.0s | 117 |
+| qwen25_14b | stacking | full | 0 | — | — | — | — | 5.8s | 77 |
+| qwen25_14b | stacking | medium | 0 | — | — | — | — | 6.8s | 112 |
+| qwen25_14b | stacking | full | 0 | — | — | — | — | 5.7s | 75 |
+| qwen25_14b | stacking | medium | 0 | — | — | — | — | 4.8s | 80 |
+| qwen25_14b | stacking | full | 0 | — | — | — | — | 5.3s | 70 |
+| qwen25_14b | stacking | medium | 0 | — | — | — | — | 11.9s | 198 |
+| qwen25_32b | hanoi | full | 0 | — | — | — | — | 21.3s | 88 |
+| qwen25_32b | hanoi | medium | 0 | — | — | — | — | 26.5s | 97 |
+| qwen25_32b | hanoi | full | 0 | — | — | — | — | 8.3s | 84 |
+| qwen25_32b | hanoi | medium | 0 | — | — | — | — | 8.6s | 85 |
+| qwen25_32b | hanoi | full | 0 | — | — | — | — | 7.1s | 84 |
+| qwen25_32b | hanoi | medium | 0 | — | — | — | — | 9.4s | 92 |
+| qwen25_32b | hanoi | full | 0 | — | — | — | — | 7.2s | 84 |
+| qwen25_32b | hanoi | medium | 0 | — | — | — | — | 9.4s | 93 |
+| qwen25_32b | hanoi | full | 0 | — | — | — | — | 7.4s | 88 |
+| qwen25_32b | hanoi | medium | 0 | — | — | — | — | 10.1s | 99 |
+| qwen25_32b | hanoi | full | 0 | — | — | — | — | 7.1s | 84 |
+| qwen25_32b | hanoi | medium | 0 | — | — | — | — | 8.6s | 84 |
+| qwen25_32b | stacking | full | 0 | — | — | — | — | 16.3s | 82 |
+| qwen25_32b | stacking | medium | 0 | — | — | — | — | 7.9s | 80 |
+| qwen25_32b | stacking | full | 0 | — | — | — | — | 7.6s | 82 |
+| qwen25_32b | stacking | medium | 0 | — | — | — | — | 7.0s | 79 |
+| qwen25_32b | stacking | full | 0 | — | — | — | — | 7.4s | 82 |
+| qwen25_32b | stacking | medium | 0 | — | — | — | — | 7.1s | 82 |
+| qwen25_32b | stacking | full | 0 | — | — | — | — | 7.8s | 82 |
+| qwen25_32b | stacking | medium | 0 | — | — | — | — | 7.4s | 85 |
+| qwen25_32b | stacking | full | 0 | — | — | — | — | 7.8s | 87 |
+| qwen25_32b | stacking | medium | 0 | — | — | — | — | 6.7s | 78 |
+| qwen25_32b | stacking | full | 0 | — | — | — | — | 7.5s | 82 |
+| qwen25_32b | stacking | medium | 0 | — | — | — | — | 7.8s | 90 |

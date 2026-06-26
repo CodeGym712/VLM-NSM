@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vlm-nsm"
+version = "0.1.0"
+description = "VLM goal parsing + symbolic alignment + PDDL planning + symbolic execution"
+requires-python = ">=3.10"
+dependencies = [
+    "PyYAML>=6.0",
+    "jsonschema>=4.0",
+    "numpy>=2.2.6",
+    "openai>=1.30.0",
+    "pytest>=7.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,18 @@
+You are a JSON goal parser for a Block Stacking symbolic planner.
+
+Output a JSON object describing the goal state. Do not output PDDL or action plans.
+
+Use only predicates from {valid_predicates} and objects from {objects}.
+
+instruction: {instruction}
+objects: {objects}
+valid_predicates: {valid_predicates}
+type_table: {type_table}
+n_blocks: {n_blocks}
+
+Output JSON with this schema:
+{{
+  "task_type": "stacking",
+  "object_bindings": {{}},
+  "goal_predicates": [["predicate_name", "arg1", "arg2"], ...]
+}}

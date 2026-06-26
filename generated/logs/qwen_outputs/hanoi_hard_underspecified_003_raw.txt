@@ -1,0 +1,1 @@
+{'task_type': 'hanoi', 'object_bindings': {'smallest disk': 'cube1', 'largest disk': 'cube3', 'source peg': 'peg1', 'target peg': 'peg3'}, 'goal_predicates': [['on', 'cube1', 'cube2'], ['on', 'cube2', 'cube3'], ['on', 'cube3', 'peg3']]}

@@ -1,0 +1,38 @@
+Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
+Loaded 22 samples from /rhome/zhaowm/my_project/VLM-NSM/data/language_variations/hanoi_hard_zh_en.jsonl
+Loading checkpoint shards:   0%|          | 0/17 [00:00<?, ?it/s]Loading checkpoint shards:   6%|▌         | 1/17 [00:29<07:47, 29.19s/it]Loading checkpoint shards:  12%|█▏        | 2/17 [00:59<07:24, 29.62s/it]Loading checkpoint shards:  18%|█▊        | 3/17 [01:29<06:58, 29.92s/it]Loading checkpoint shards:  24%|██▎       | 4/17 [01:59<06:27, 29.84s/it]Loading checkpoint shards:  29%|██▉       | 5/17 [02:29<05:58, 29.87s/it]Loading checkpoint shards:  35%|███▌      | 6/17 [02:58<05:26, 29.68s/it]Loading checkpoint shards:  41%|████      | 7/17 [03:26<04:50, 29.07s/it]Loading checkpoint shards:  47%|████▋     | 8/17 [03:55<04:21, 29.05s/it]Loading checkpoint shards:  53%|█████▎    | 9/17 [04:20<03:41, 27.74s/it]Loading checkpoint shards:  59%|█████▉    | 10/17 [04:37<02:52, 24.71s/it]Loading checkpoint shards:  65%|██████▍   | 11/17 [05:06<02:34, 25.82s/it]Loading checkpoint shards:  71%|███████   | 12/17 [05:29<02:04, 24.97s/it]Loading checkpoint shards:  76%|███████▋  | 13/17 [05:54<01:40, 25.05s/it]Loading checkpoint shards:  82%|████████▏ | 14/17 [06:19<01:15, 25.05s/it]Loading checkpoint shards:  88%|████████▊ | 15/17 [06:46<00:51, 25.76s/it]Loading checkpoint shards:  94%|█████████▍| 16/17 [07:16<00:26, 26.77s/it]Loading checkpoint shards: 100%|██████████| 17/17 [07:37<00:00, 25.03s/it]Loading checkpoint shards: 100%|██████████| 17/17 [07:37<00:00, 26.89s/it]
+Model loaded with weak prompt, processing 22 samples...
+  FAIL hanoi_hard_alias_001: parse=False align=False goal=False [json_parse_error]
+  FAIL hanoi_hard_alias_002: parse=True align=False goal=False [schema_error]
+  FAIL hanoi_hard_alias_003: parse=True align=False goal=False [schema_error]
+  FAIL hanoi_hard_alias_004: parse=True align=False goal=False [schema_error]
+  FAIL hanoi_hard_underspecified_001: parse=True align=False goal=False [schema_error]
+  FAIL hanoi_hard_underspecified_002: parse=True align=False goal=False [schema_error]
+  FAIL hanoi_hard_underspecified_003: parse=True align=False goal=False [schema_error]
+  FAIL hanoi_hard_underspecified_004: parse=True align=False goal=False [schema_error]
+  FAIL hanoi_hard_underspecified_005: parse=True align=False goal=False [schema_error]
+  FAIL hanoi_hard_object_synonym_001: parse=True align=False goal=False [schema_error]
+  FAIL hanoi_hard_object_synonym_002: parse=True align=False goal=False [schema_error]
+  FAIL hanoi_hard_object_synonym_003: parse=True align=False goal=False [schema_error]
+  FAIL hanoi_hard_object_synonym_004: parse=True align=False goal=False [schema_error]
+  FAIL hanoi_hard_mixed_language_001: parse=True align=False goal=False [schema_error]
+  FAIL hanoi_hard_mixed_language_002: parse=True align=False goal=False [schema_error]
+  FAIL hanoi_hard_mixed_language_003: parse=True align=False goal=False [schema_error]
+  FAIL hanoi_hard_noisy_format_001: parse=True align=False goal=False [schema_error]
+  FAIL hanoi_hard_noisy_format_002: parse=True align=False goal=False [schema_error]
+  FAIL hanoi_hard_noisy_format_003: parse=True align=False goal=False [schema_error]
+  FAIL hanoi_hard_misleading_001: parse=True align=False goal=False [schema_error]
+  FAIL hanoi_hard_misleading_002: parse=True align=False goal=False [schema_error]
+  FAIL hanoi_hard_misleading_003: parse=True align=False goal=False [schema_error]
+
+Results written to /rhome/zhaowm/my_project/VLM-NSM/generated/results/language_variation_hanoi_hard_qwen25_32b.json
+CSV written to /rhome/zhaowm/my_project/VLM-NSM/generated/results/language_variation_hanoi_hard_qwen25_32b.csv
+
+--- Summary for hanoi (qwen25_32b, hard, weak, full) ---
+Total samples:    22
+JSON parse rate:  21/22 (95.5%)
+Alignment rate:   0/22 (0.0%)
+Repair rate:      0/22 (0.0%)
+Planner rate:     0/22 (0.0%)
+Execution rate:   0/22 (0.0%)
+Goal success rate:0/22 (0.0%)

@@ -1,0 +1,38 @@
+Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
+Loaded 22 samples from /rhome/zhaowm/my_project/VLM-NSM/data/language_variations/stacking_hard_zh_en.jsonl
+Loading checkpoint shards:   0%|          | 0/17 [00:00<?, ?it/s]Loading checkpoint shards:   6%|▌         | 1/17 [00:28<07:40, 28.77s/it]Loading checkpoint shards:  12%|█▏        | 2/17 [00:45<05:22, 21.49s/it]Loading checkpoint shards:  18%|█▊        | 3/17 [01:03<04:42, 20.16s/it]Loading checkpoint shards:  24%|██▎       | 4/17 [01:20<04:05, 18.86s/it]Loading checkpoint shards:  29%|██▉       | 5/17 [01:37<03:36, 18.02s/it]Loading checkpoint shards:  35%|███▌      | 6/17 [01:51<03:05, 16.87s/it]Loading checkpoint shards:  41%|████      | 7/17 [01:56<02:08, 12.90s/it]Loading checkpoint shards:  47%|████▋     | 8/17 [02:00<01:30, 10.11s/it]Loading checkpoint shards:  53%|█████▎    | 9/17 [02:06<01:09,  8.71s/it]Loading checkpoint shards:  59%|█████▉    | 10/17 [02:15<01:01,  8.75s/it]Loading checkpoint shards:  65%|██████▍   | 11/17 [02:24<00:53,  8.88s/it]Loading checkpoint shards:  71%|███████   | 12/17 [02:33<00:44,  8.93s/it]Loading checkpoint shards:  76%|███████▋  | 13/17 [02:46<00:41, 10.27s/it]Loading checkpoint shards:  82%|████████▏ | 14/17 [03:07<00:40, 13.55s/it]Loading checkpoint shards:  88%|████████▊ | 15/17 [03:21<00:27, 13.72s/it]Loading checkpoint shards:  94%|█████████▍| 16/17 [03:31<00:12, 12.54s/it]Loading checkpoint shards: 100%|██████████| 17/17 [03:38<00:00, 10.75s/it]Loading checkpoint shards: 100%|██████████| 17/17 [03:38<00:00, 12.84s/it]
+Model loaded with full prompt, processing 22 samples...
+  OK stacking_hard_alias_001: parse=True align=True goal=True
+  OK stacking_hard_alias_002: parse=True align=True goal=True
+  OK stacking_hard_alias_003: parse=True align=True goal=True
+  OK stacking_hard_alias_004: parse=True align=True goal=True
+  OK stacking_hard_underspecified_001: parse=True align=True goal=True
+  OK stacking_hard_underspecified_002: parse=True align=True goal=True
+  OK stacking_hard_underspecified_003: parse=True align=True goal=True
+  OK stacking_hard_underspecified_004: parse=True align=True goal=True
+  OK stacking_hard_underspecified_005: parse=True align=True goal=True
+  OK stacking_hard_object_synonym_001: parse=True align=True goal=True
+  OK stacking_hard_object_synonym_002: parse=True align=True goal=True
+  OK stacking_hard_object_synonym_003: parse=True align=True goal=True
+  OK stacking_hard_object_synonym_004: parse=True align=True goal=True
+  OK stacking_hard_mixed_language_001: parse=True align=True goal=True
+  OK stacking_hard_mixed_language_002: parse=True align=True goal=True
+  OK stacking_hard_mixed_language_003: parse=True align=True goal=True
+  OK stacking_hard_noisy_format_001: parse=True align=True goal=True
+  OK stacking_hard_noisy_format_002: parse=True align=True goal=True
+  OK stacking_hard_noisy_format_003: parse=True align=True goal=True
+  OK stacking_hard_partial_goal_001: parse=True align=True goal=True
+  OK stacking_hard_partial_goal_002: parse=True align=True goal=True
+  OK stacking_hard_partial_goal_003: parse=True align=True goal=True
+
+Results written to /rhome/zhaowm/my_project/VLM-NSM/generated/results/language_variation_stacking_hard_qwen25_32b_full_no_alias_repair.json
+CSV written to /rhome/zhaowm/my_project/VLM-NSM/generated/results/language_variation_stacking_hard_qwen25_32b_full_no_alias_repair.csv
+
+--- Summary for stacking (qwen25_32b, hard, full, no_alias_repair) ---
+Total samples:    22
+JSON parse rate:  22/22 (100.0%)
+Alignment rate:   22/22 (100.0%)
+Repair rate:      0/22 (0.0%)
+Planner rate:     22/22 (100.0%)
+Execution rate:   22/22 (100.0%)
+Goal success rate:22/22 (100.0%)

@@ -1,0 +1,23 @@
+Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
+Loaded 7 samples from /rhome/zhaowm/my_project/VLM-NSM/data/language_variations/stacking_zh_en.jsonl
+Loading checkpoint shards:   0%|          | 0/17 [00:00<?, ?it/s]Loading checkpoint shards:   6%|▌         | 1/17 [00:30<08:07, 30.47s/it]Loading checkpoint shards:  12%|█▏        | 2/17 [01:00<07:28, 29.93s/it]Loading checkpoint shards:  18%|█▊        | 3/17 [01:31<07:10, 30.74s/it]Loading checkpoint shards:  24%|██▎       | 4/17 [02:02<06:40, 30.80s/it]Loading checkpoint shards:  29%|██▉       | 5/17 [02:32<06:06, 30.51s/it]Loading checkpoint shards:  35%|███▌      | 6/17 [03:02<05:34, 30.40s/it]Loading checkpoint shards:  41%|████      | 7/17 [03:33<05:04, 30.49s/it]Loading checkpoint shards:  47%|████▋     | 8/17 [04:06<04:42, 31.35s/it]Loading checkpoint shards:  53%|█████▎    | 9/17 [04:38<04:12, 31.50s/it]Loading checkpoint shards:  59%|█████▉    | 10/17 [05:09<03:39, 31.30s/it]Loading checkpoint shards:  65%|██████▍   | 11/17 [05:39<03:04, 30.81s/it]Loading checkpoint shards:  71%|███████   | 12/17 [06:10<02:35, 31.14s/it]Loading checkpoint shards:  76%|███████▋  | 13/17 [06:40<02:02, 30.70s/it]Loading checkpoint shards:  82%|████████▏ | 14/17 [07:10<01:31, 30.56s/it]Loading checkpoint shards:  88%|████████▊ | 15/17 [07:41<01:01, 30.71s/it]Loading checkpoint shards:  94%|█████████▍| 16/17 [08:12<00:30, 30.71s/it]Loading checkpoint shards: 100%|██████████| 17/17 [08:36<00:00, 28.59s/it]Loading checkpoint shards: 100%|██████████| 17/17 [08:36<00:00, 30.37s/it]
+Model loaded with full prompt, processing 7 samples...
+  OK stacking_zh_standard_001: parse=True align=True goal=True
+  OK stacking_zh_natural_002: parse=True align=True goal=True
+  OK stacking_zh_colloquial_003: parse=True align=True goal=True
+  OK stacking_en_standard_004: parse=True align=True goal=True
+  OK stacking_en_goal_005: parse=True align=True goal=True
+  OK stacking_en_alias_006: parse=True align=True goal=True
+  OK stacking_en_omit_007: parse=True align=True goal=True
+
+Results written to /rhome/zhaowm/my_project/VLM-NSM/generated/results/language_variation_stacking_easy_qwen25_32b.json
+CSV written to /rhome/zhaowm/my_project/VLM-NSM/generated/results/language_variation_stacking_easy_qwen25_32b.csv
+
+--- Summary for stacking (qwen25_32b, easy, full, full) ---
+Total samples:    7
+JSON parse rate:  7/7 (100.0%)
+Alignment rate:   7/7 (100.0%)
+Repair rate:      0/7 (0.0%)
+Planner rate:     7/7 (100.0%)
+Execution rate:   7/7 (100.0%)
+Goal success rate:7/7 (100.0%)

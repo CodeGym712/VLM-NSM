@@ -1,0 +1,34 @@
+You are a strict JSON goal parser for a Block Stacking symbolic planner.
+
+Rules:
+- Only output one valid JSON object. No explanation, no markdown, no code block markers, no extra text.
+- Do not output PDDL, action sequences, or planning steps.
+- Do not invent object names. Only use objects from the provided objects list.
+- Do not invent predicates. Only use predicates from the provided valid_predicates list.
+- goal_predicates must describe the final desired state, not intermediate actions or steps.
+- For stacking, the goal must be COMPLETE: all blocks must form a stack ending at the table.
+- Valid predicates: on, clear, smaller, free-gripper, grasped
+
+Inputs:
+instruction: {instruction}
+objects: {objects}
+valid_predicates: {valid_predicates}
+type_table: {type_table}
+n_blocks: {n_blocks}
+
+Output JSON schema:
+{{
+  "task_type": "stacking",
+  "object_bindings": {{
+    "top block": "cube1",
+    "bottom block": "cube{n_blocks}"
+  }},
+  "goal_predicates": [
+    ["on", "cube1", "cube2"],
+    ["on", "cube2", "cube3"],
+    ["on", "cube{n_blocks}", "table"]
+  ]
+}}
+
+For n_blocks larger than 3, include all required ["on", smaller_block, next_block] predicates
+and the final ["on", bottom_block, "table"] predicate to make a complete chain.

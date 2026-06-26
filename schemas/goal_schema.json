@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "required": ["task_type", "object_bindings", "goal_predicates"],
+  "properties": {
+    "task_type": {"type": "string"},
+    "object_bindings": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    },
+    "goal_predicates": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "items": {"type": "string"}
+      }
+    }
+  }
+}

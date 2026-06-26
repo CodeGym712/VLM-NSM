@@ -1,0 +1,1 @@
+Baseline prompt: output a full action sequence. This is intentionally used only as a direct-plan baseline.

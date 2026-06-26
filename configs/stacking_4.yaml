@@ -1,0 +1,8 @@
+task_name: stacking
+n_blocks: 4
+cubes: [cube1, cube2, cube3, cube4]
+table: table
+target_stack: [cube4, cube3, cube2, cube1]
+parser: mock
+planner: internal_stacking
+executor: symbolic

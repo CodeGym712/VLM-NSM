@@ -1,0 +1,26 @@
+{
+  "reach_pick": {
+    "kp": 0.1,
+    "ki": 0.005,
+    "kd": 0.0,
+    "max_delta": 0.02
+  },
+  "grasp": {
+    "kp": 0.07,
+    "ki": 0.002,
+    "kd": 0.0,
+    "max_delta": 0.01
+  },
+  "lift": {
+    "kp": 0.1,
+    "ki": 0.002,
+    "kd": 0.0,
+    "max_delta": 0.02
+  },
+  "reach_place": {
+    "kp": 0.08,
+    "ki": 0.005,
+    "kd": 0.0,
+    "max_delta": 0.015
+  }
+}

@@ -1,0 +1,38 @@
+Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
+Loaded 22 samples from /rhome/zhaowm/my_project/VLM-NSM/data/language_variations/hanoi_hard_zh_en.jsonl
+Loading checkpoint shards:   0%|          | 0/8 [00:00<?, ?it/s]Loading checkpoint shards:  12%|█▎        | 1/8 [00:39<04:38, 39.79s/it]Loading checkpoint shards:  25%|██▌       | 2/8 [01:23<04:12, 42.06s/it]Loading checkpoint shards:  38%|███▊      | 3/8 [02:07<03:35, 43.01s/it]Loading checkpoint shards:  50%|█████     | 4/8 [02:50<02:51, 42.94s/it]Loading checkpoint shards:  62%|██████▎   | 5/8 [03:29<02:04, 41.63s/it]Loading checkpoint shards:  75%|███████▌  | 6/8 [04:11<01:23, 41.71s/it]Loading checkpoint shards:  88%|████████▊ | 7/8 [04:52<00:41, 41.44s/it]Loading checkpoint shards: 100%|██████████| 8/8 [05:06<00:00, 32.86s/it]Loading checkpoint shards: 100%|██████████| 8/8 [05:06<00:00, 38.37s/it]
+Model loaded with full prompt, processing 22 samples...
+  OK hanoi_hard_alias_001: parse=True align=True goal=True
+  OK hanoi_hard_alias_002: parse=True align=True goal=True
+  OK hanoi_hard_alias_003: parse=True align=True goal=True
+  OK hanoi_hard_alias_004: parse=True align=True goal=True
+  OK hanoi_hard_underspecified_001: parse=True align=True goal=True
+  OK hanoi_hard_underspecified_002: parse=True align=True goal=True
+  OK hanoi_hard_underspecified_003: parse=True align=True goal=True
+  OK hanoi_hard_underspecified_004: parse=True align=True goal=True
+  OK hanoi_hard_underspecified_005: parse=True align=True goal=True
+  OK hanoi_hard_object_synonym_001: parse=True align=True goal=True
+  OK hanoi_hard_object_synonym_002: parse=True align=True goal=True
+  OK hanoi_hard_object_synonym_003: parse=True align=True goal=True
+  OK hanoi_hard_object_synonym_004: parse=True align=True goal=True
+  OK hanoi_hard_mixed_language_001: parse=True align=True goal=True
+  OK hanoi_hard_mixed_language_002: parse=True align=True goal=True
+  OK hanoi_hard_mixed_language_003: parse=True align=True goal=True
+  OK hanoi_hard_noisy_format_001: parse=True align=True goal=True
+  OK hanoi_hard_noisy_format_002: parse=True align=True goal=True
+  OK hanoi_hard_noisy_format_003: parse=True align=True goal=True
+  OK hanoi_hard_misleading_001: parse=True align=True goal=True
+  OK hanoi_hard_misleading_002: parse=True align=True goal=True
+  OK hanoi_hard_misleading_003: parse=True align=True goal=True
+
+Results written to /rhome/zhaowm/my_project/VLM-NSM/generated/results/language_variation_hanoi_hard_qwen25_14b_full_full.json
+CSV written to /rhome/zhaowm/my_project/VLM-NSM/generated/results/language_variation_hanoi_hard_qwen25_14b_full_full.csv
+
+--- Summary for hanoi (qwen25_14b, hard, full, full) ---
+Total samples:    22
+JSON parse rate:  22/22 (100.0%)
+Alignment rate:   22/22 (100.0%)
+Repair rate:      0/22 (0.0%)
+Planner rate:     22/22 (100.0%)
+Execution rate:   22/22 (100.0%)
+Goal success rate:22/22 (100.0%)

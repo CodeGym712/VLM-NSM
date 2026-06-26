@@ -1,0 +1,11 @@
+task_name: hanoi
+n_blocks: 4
+disks: [cube1, cube2, cube3, cube4]
+pegs: [peg1, peg2, peg3]
+source_peg: peg1
+aux_peg: peg2
+target_peg: peg3
+planner: metric_ff
+domain_path: domains/hanoi/domain.pddl
+executor: symbolic
+parser: mock

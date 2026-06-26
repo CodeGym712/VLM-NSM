@@ -1,0 +1,101 @@
+# Large artifact manifest for VLM-NSM
+# Lists all generated data NOT tracked by Git, with server paths,
+# sizes, purposes, and regeneration instructions.
+#
+# Generated: 2026-06-26 (pre-migration audit)
+
+server:
+  host: current server
+  base_path: /rhome/zhaowm/my_project/VLM-NSM/generated
+
+artifacts:
+  # ── Datasets ──
+  - path: generated/datasets/vla_demos/
+    size: "208 GB"
+    purpose: "VLA training datasets (500ep, 200ep, diagnostic 50ep sets)"
+    regenerable: true
+    regeneration: "src/vlm_nsm/experiments/collect_vla_demos.py (requires MuJoCo + robosuite)"
+    status: "VLA abandoned; kept for gate attribution paper"
+
+  - path: generated/datasets/rgb_perception_v0_1_medium/
+    size: "548 MB"
+    purpose: "RGB perception training dataset (medium scale)"
+    regenerable: true
+    regeneration: "src/vlm_nsm/experiments/collect_rgb_perception_dataset.py"
+    status: "Stage 27 offline only"
+
+  - path: generated/datasets/rgb_perception_v0_1_smoke/
+    size: "26 MB"
+    purpose: "RGB perception smoke test dataset"
+    regenerable: true
+    regeneration: "src/vlm_nsm/experiments/collect_rgb_perception_dataset.py"
+    status: "smoke test"
+
+  - path: generated/datasets/skill_demos_v0_1_smoke/
+    size: "2.6 MB"
+    purpose: "Skill demonstration smoke test"
+    regenerable: true
+    regeneration: "scripts/collect_skill_demos_smoke.sh"
+    status: "smoke test"
+
+  # ── Results ──
+  - path: generated/results/vla/
+    size: "5.6 GB"
+    purpose: "VLA experiments: B4/B5 gate, gate sweep, M0/M1 model checkpoints, S0 live shadow"
+    regenerable: false
+    note: "Gate sweep and B4/B5 fixed results are critical for paper C1 contribution"
+    paper_relevant: true
+
+  - path: generated/results/control/
+    size: "30 MB"
+    purpose: "PID vs P-controller comparison results (2-block stacking)"
+    regenerable: true
+    regeneration: "src/vlm_nsm/experiments/run_controlled_comparison.py"
+    paper_relevant: true
+    paper_contribution: "C2"
+
+  - path: generated/results/stage_20/
+    size: "104 MB"
+    purpose: "Stage 20 goal-conditioned LSTM/MLP training results"
+    regenerable: true
+    status: "DEPRECATED (2026-06-10, closed-loop 0% success)"
+
+  - path: generated/results/stage_21/
+    size: "30 MB"
+    purpose: "Stage 21 results"
+    regenerable: true
+    status: "DEPRECATED"
+
+  - path: generated/results/stage_*/
+    size: "~80 MB (various)"
+    purpose: "Intermediate stage results (stages 6-35)"
+    regenerable: true
+    status: "Mostly intermediate; paper-relevant: stage32, stage34, stage35"
+
+  # ── Models ──
+  - path: generated/models/
+    size: "27 MB"
+    purpose: "YOLO perception models + ACT skill policy + BC models"
+    regenerable: true
+    regeneration: "Ultralytics YOLO training / BC training scripts"
+    status: "Keep on server for inference; not for Git"
+
+  # ── Videos & Demos ──
+  - path: generated/videos/
+    size: "45 MB"
+    purpose: "Task execution recordings"
+    regenerable: true
+    regeneration: "src/vlm_nsm/experiments/record_task_video.py"
+
+  - path: generated/demos/
+    size: "41 MB"
+    purpose: "Old stage demo artifacts"
+    regenerable: true
+    status: "DEPRECATED stages"
+
+  # ── Eval inputs ──
+  - path: generated/eval_inputs/
+    size: "20 MB"
+    purpose: "Cached evaluation inputs for old stages"
+    regenerable: true
+    status: "DEPRECATED stages"

@@ -1,0 +1,168 @@
+{
+  "description": "Semantic validity audit for referential instructions in Stage 18 eval set. Classifies whether each referential expression is objectively groundable from available scene inventory vs objectively ambiguous or unsupported.",
+  "version": "stage18_h",
+  "date": "2026-05-26",
+  "referential_instructions": [
+    {
+      "instruction_id": "ref_001",
+      "instruction_text": "Place the nearer cube onto the farther cube.",
+      "expected_top": "cube1",
+      "expected_bottom": "cube2",
+      "semantic_validity": "objectively_groundable",
+      "reference_type": "robot_relative_near_far",
+      "reason": "cube1 at 0.40m vs cube2 at 0.60m from robot — near/far objectively distinguishable from robot_distance attribute",
+      "recommended_expected_status": "grounded",
+      "should_count_in_raw_referential": true,
+      "should_count_in_groundable_referential": true
+    },
+    {
+      "instruction_id": "ref_002",
+      "instruction_text": "Take the first cube you see and put it on the second one.",
+      "expected_top": "cube1",
+      "expected_bottom": "cube2",
+      "semantic_validity": "unsupported_reference_frame",
+      "reference_type": "visual_order",
+      "reason": "'first cube you see' requires a visual scanning order convention (e.g. left-to-right, top-to-bottom) that is not defined in the scene inventory or system prompt. No objective grounding possible.",
+      "recommended_expected_status": "ungroundable",
+      "should_count_in_raw_referential": true,
+      "should_count_in_groundable_referential": false
+    },
+    {
+      "instruction_id": "ref_003",
+      "instruction_text": "Put the cube that is on the table onto the other cube.",
+      "expected_top": "cube1",
+      "expected_bottom": "cube2",
+      "semantic_validity": "objectively_ambiguous",
+      "reference_type": "on_table",
+      "reason": "Both cube1 and cube2 are on_table=True in the scene. 'the cube that is on the table' does not uniquely identify one cube. The reference is objectively ambiguous given available predicates.",
+      "recommended_expected_status": "ungroundable",
+      "should_count_in_raw_referential": true,
+      "should_count_in_groundable_referential": false
+    },
+    {
+      "instruction_id": "ref_004",
+      "instruction_text": "Put the one that is closer to the edge onto the other one.",
+      "expected_top": "cube1",
+      "expected_bottom": "cube2",
+      "semantic_validity": "objectively_ambiguous",
+      "reference_type": "table_edge",
+      "reason": "Both cubes are in Center region with near_edges=[]. Neither is closer to any table edge within the 0.10m edge_threshold. The reference is objectively ungroundable from available edge proximity data.",
+      "recommended_expected_status": "ungroundable",
+      "should_count_in_raw_referential": true,
+      "should_count_in_groundable_referential": false
+    },
+    {
+      "instruction_id": "ref_005",
+      "instruction_text": "Stack the block that is on the table on top of the other block.",
+      "expected_top": "cube1",
+      "expected_bottom": "cube2",
+      "semantic_validity": "objectively_ambiguous",
+      "reference_type": "on_table",
+      "reason": "Same as ref_003 — both blocks are on_table=True. 'the block that is on the table' does not uniquely identify one cube.",
+      "recommended_expected_status": "ungroundable",
+      "should_count_in_raw_referential": true,
+      "should_count_in_groundable_referential": false
+    },
+    {
+      "instruction_id": "ref_006",
+      "instruction_text": "Move the block closer to you onto the one further away.",
+      "expected_top": "cube1",
+      "expected_bottom": "cube2",
+      "semantic_validity": "objectively_groundable",
+      "reference_type": "robot_relative_near_far",
+      "reason": "cube1 is closer to robot (front direction). Robot-relative distance objectively distinguishes the two cubes.",
+      "recommended_expected_status": "grounded",
+      "should_count_in_raw_referential": true,
+      "should_count_in_groundable_referential": true
+    },
+    {
+      "instruction_id": "ref_007",
+      "instruction_text": "Put the cube that is farther from the robot onto the nearer one.",
+      "expected_top": "cube2",
+      "expected_bottom": "cube1",
+      "semantic_validity": "objectively_groundable",
+      "reference_type": "robot_relative_near_far",
+      "reason": "cube2 is farther from robot. robot_distance values (0.60m vs 0.40m) objectively distinguish the two cubes.",
+      "recommended_expected_status": "grounded",
+      "should_count_in_raw_referential": true,
+      "should_count_in_groundable_referential": true
+    },
+    {
+      "instruction_id": "ref_008",
+      "instruction_text": "Pick up the cube that is not green and put it on the green cube.",
+      "expected_top": "cube1",
+      "expected_bottom": "cube2",
+      "semantic_validity": "objectively_groundable",
+      "reference_type": "other_object",
+      "reason": "Color negation: only red and green cubes exist. 'not green' uniquely identifies cube1 (red).",
+      "recommended_expected_status": "grounded",
+      "should_count_in_raw_referential": true,
+      "should_count_in_groundable_referential": true
+    },
+    {
+      "instruction_id": "ref_009",
+      "instruction_text": "把离你近的方块放到离你远的方块上。",
+      "expected_top": "cube1",
+      "expected_bottom": "cube2",
+      "semantic_validity": "objectively_groundable",
+      "reference_type": "robot_relative_near_far",
+      "reason": "Chinese equivalent of 'nearer to farther'. robot_distance objectively distinguishes the two cubes.",
+      "recommended_expected_status": "grounded",
+      "should_count_in_raw_referential": true,
+      "should_count_in_groundable_referential": true
+    },
+    {
+      "instruction_id": "ref_010",
+      "instruction_text": "离机器人最近的那个方块放到最远的方块上。",
+      "expected_top": "cube1",
+      "expected_bottom": "cube2",
+      "semantic_validity": "objectively_groundable",
+      "reference_type": "robot_relative_near_far",
+      "reason": "Chinese 'closest to robot to farthest'. robot_distance objectively distinguishes the two cubes.",
+      "recommended_expected_status": "grounded",
+      "should_count_in_raw_referential": true,
+      "should_count_in_groundable_referential": true
+    },
+    {
+      "instruction_id": "ref_011",
+      "instruction_text": "Put the lighter colored cube on the darker one.",
+      "expected_top": null,
+      "expected_bottom": null,
+      "semantic_validity": "unsupported_reference_frame",
+      "reference_type": "color_attribute",
+      "reason": "'lighter/darker' requires luminance/brightness comparison. Scene inventory only provides color names (red, green) without brightness metrics. No objective ground truth for which is 'lighter'.",
+      "recommended_expected_status": "ungroundable",
+      "should_count_in_raw_referential": true,
+      "should_count_in_groundable_referential": false
+    },
+    {
+      "instruction_id": "ref_012",
+      "instruction_text": "Place the bright cube on the dull cube.",
+      "expected_top": null,
+      "expected_bottom": null,
+      "semantic_validity": "unsupported_reference_frame",
+      "reference_type": "color_attribute",
+      "reason": "'bright/dull' requires brightness perception beyond available color labels. No brightness annotation in scene inventory.",
+      "recommended_expected_status": "ungroundable",
+      "should_count_in_raw_referential": true,
+      "should_count_in_groundable_referential": false
+    }
+  ],
+  "semantic_validity_definitions": {
+    "objectively_groundable": "The referential expression can be uniquely resolved from available scene predicates (position, color, robot_distance, on_table, near_edges, spatial relations). A competent model should produce the correct binding.",
+    "objectively_ambiguous": "The expression refers to a property shared equally by multiple objects in the scene (e.g. both cubes are on_table, both are in Center). No model can resolve it correctly because the ground-truth binding is arbitrary given available data. Ungroundable is the correct output.",
+    "unsupported_reference_frame": "The expression requires a frame of reference, convention, or sensor modality not present in the scene inventory (e.g. 'first cube you see' needs a visual scanning order, 'lighter/darker' needs luminance). Ungroundable is the correct output.",
+    "requires_missing_predicate": "The expression would be groundable if a specific predicate were added to the scene inventory, but that predicate is not currently computed.",
+    "evaluator_mismatch": "The evaluator expected a binding that does not match what the scene data supports. The original ground-truth label may be incorrect for this instruction under the current scene."
+  },
+  "reference_type_definitions": {
+    "robot_relative_near_far": "nearer/farther/closer to robot/further from robot — resolved via robot_distance attribute",
+    "table_edge": "closer to edge/at the edge — resolved via near_edges attribute",
+    "on_table": "on the table/on the surface — resolved via on_table attribute",
+    "visual_order": "first/second you see — requires visual scanning convention",
+    "other_object": "negation or exclusion (e.g. 'not green') — resolved via color attribute",
+    "spatial_relative": "left/right/front/back — resolved via spatial world_relations",
+    "color_attribute": "lighter/darker/bright/dull — requires brightness metric beyond color name",
+    "unknown": "uncategorized"
+  }
+}

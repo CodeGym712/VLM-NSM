@@ -1,0 +1,24 @@
+Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
+Loaded 8 samples from /rhome/zhaowm/my_project/VLM-NSM/data/language_variations/hanoi_zh_en.jsonl
+Loading checkpoint shards:   0%|          | 0/17 [00:00<?, ?it/s]Loading checkpoint shards:   6%|▌         | 1/17 [00:31<08:25, 31.59s/it]Loading checkpoint shards:  12%|█▏        | 2/17 [01:00<07:31, 30.11s/it]Loading checkpoint shards:  18%|█▊        | 3/17 [01:43<08:24, 36.05s/it]Loading checkpoint shards:  24%|██▎       | 4/17 [02:17<07:34, 34.99s/it]Loading checkpoint shards:  29%|██▉       | 5/17 [02:50<06:52, 34.37s/it]Loading checkpoint shards:  35%|███▌      | 6/17 [03:25<06:20, 34.57s/it]Loading checkpoint shards:  41%|████      | 7/17 [03:59<05:45, 34.57s/it]Loading checkpoint shards:  47%|████▋     | 8/17 [04:34<05:09, 34.42s/it]Loading checkpoint shards:  53%|█████▎    | 9/17 [05:08<04:35, 34.49s/it]Loading checkpoint shards:  59%|█████▉    | 10/17 [05:45<04:07, 35.34s/it]Loading checkpoint shards:  65%|██████▍   | 11/17 [06:21<03:32, 35.36s/it]Loading checkpoint shards:  71%|███████   | 12/17 [06:56<02:56, 35.38s/it]Loading checkpoint shards:  76%|███████▋  | 13/17 [07:30<02:19, 34.91s/it]Loading checkpoint shards:  82%|████████▏ | 14/17 [08:04<01:43, 34.51s/it]Loading checkpoint shards:  88%|████████▊ | 15/17 [08:35<01:07, 33.60s/it]Loading checkpoint shards:  94%|█████████▍| 16/17 [09:09<00:33, 33.61s/it]Loading checkpoint shards: 100%|██████████| 17/17 [09:33<00:00, 30.80s/it]Loading checkpoint shards: 100%|██████████| 17/17 [09:33<00:00, 33.74s/it]
+Model loaded with full prompt, processing 8 samples...
+  OK hanoi_zh_standard_001: parse=True align=True goal=True
+  OK hanoi_zh_rewrite_002: parse=True align=True goal=True
+  OK hanoi_zh_colloquial_003: parse=True align=True goal=True
+  OK hanoi_zh_omit_004: parse=True align=True goal=True
+  OK hanoi_en_standard_005: parse=True align=True goal=True
+  OK hanoi_en_short_006: parse=True align=True goal=True
+  OK hanoi_en_alias_007: parse=True align=True goal=True
+  OK hanoi_en_ambiguous_008: parse=True align=True goal=True
+
+Results written to /rhome/zhaowm/my_project/VLM-NSM/generated/results/language_variation_hanoi_easy_qwen25_32b.json
+CSV written to /rhome/zhaowm/my_project/VLM-NSM/generated/results/language_variation_hanoi_easy_qwen25_32b.csv
+
+--- Summary for hanoi (qwen25_32b, easy, full, full) ---
+Total samples:    8
+JSON parse rate:  8/8 (100.0%)
+Alignment rate:   8/8 (100.0%)
+Repair rate:      0/8 (0.0%)
+Planner rate:     8/8 (100.0%)
+Execution rate:   8/8 (100.0%)
+Goal success rate:8/8 (100.0%)

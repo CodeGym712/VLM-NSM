@@ -1,0 +1,12 @@
+{
+  "kp": 0.08,
+  "max_delta": 0.015,
+  "reach_threshold": 0.02,
+  "grasp_close_steps": 50,
+  "lift_height": 0.05,
+  "release_open_steps": 50,
+  "early_stop_on_goal": true,
+  "use_place_state_machine": true,
+  "horizon_aware": true,
+  "place_retry": true
+}

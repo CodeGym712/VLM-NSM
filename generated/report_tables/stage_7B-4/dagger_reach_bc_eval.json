@@ -1,0 +1,137 @@
+{
+  "model": "generated/results/stage_7B-4/dagger_reach_bc/best.pt",
+  "bc_phases": [
+    "reach_pick",
+    "reach_place"
+  ],
+  "num_episodes": 20,
+  "success_rate": 0.9,
+  "success_count": 18,
+  "mean_steps": 744.45,
+  "std_steps": 93.98163384406551,
+  "mean_bc_steps": 510.8,
+  "mean_scripted_steps": 233.75,
+  "elapsed_seconds": 268.67275166511536,
+  "episode_results": [
+    {
+      "success": true,
+      "steps": 708,
+      "bc_steps": 495,
+      "failure_type": "preplace"
+    },
+    {
+      "success": true,
+      "steps": 705,
+      "bc_steps": 490,
+      "failure_type": "preplace"
+    },
+    {
+      "success": true,
+      "steps": 725,
+      "bc_steps": 510,
+      "failure_type": "preplace"
+    },
+    {
+      "success": true,
+      "steps": 686,
+      "bc_steps": 468,
+      "failure_type": "preplace"
+    },
+    {
+      "success": true,
+      "steps": 729,
+      "bc_steps": 519,
+      "failure_type": "preplace"
+    },
+    {
+      "success": true,
+      "steps": 695,
+      "bc_steps": 480,
+      "failure_type": "preplace"
+    },
+    {
+      "success": true,
+      "steps": 703,
+      "bc_steps": 488,
+      "failure_type": "preplace"
+    },
+    {
+      "success": true,
+      "steps": 876,
+      "bc_steps": 667,
+      "failure_type": null
+    },
+    {
+      "success": true,
+      "steps": 1000,
+      "bc_steps": 810,
+      "failure_type": "preplace"
+    },
+    {
+      "success": true,
+      "steps": 706,
+      "bc_steps": 493,
+      "failure_type": "preplace"
+    },
+    {
+      "success": true,
+      "steps": 691,
+      "bc_steps": 474,
+      "failure_type": "preplace"
+    },
+    {
+      "success": true,
+      "steps": 698,
+      "bc_steps": 483,
+      "failure_type": "preplace"
+    },
+    {
+      "success": true,
+      "steps": 685,
+      "bc_steps": 469,
+      "failure_type": "preplace"
+    },
+    {
+      "success": true,
+      "steps": 734,
+      "bc_steps": 507,
+      "failure_type": "preplace"
+    },
+    {
+      "success": false,
+      "steps": 1000,
+      "bc_steps": 387,
+      "failure_type": "preplace"
+    },
+    {
+      "success": true,
+      "steps": 678,
+      "bc_steps": 461,
+      "failure_type": "preplace"
+    },
+    {
+      "success": true,
+      "steps": 721,
+      "bc_steps": 507,
+      "failure_type": "preplace"
+    },
+    {
+      "success": false,
+      "steps": 727,
+      "bc_steps": 516,
+      "failure_type": "preplace"
+    },
+    {
+      "success": true,
+      "steps": 713,
+      "bc_steps": 501,
+      "failure_type": "preplace"
+    },
+    {
+      "success": true,
+      "steps": 709,
+      "bc_steps": 491,
+      "failure_type": "preplace"
+    }
+  ]
+}

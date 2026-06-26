@@ -1,0 +1,35 @@
+(define (problem hanoi_hard_misleading_001_problem)
+  (:domain hanoi)
+  (:objects
+    cube1 cube2 cube3 - disk
+    peg1 peg2 peg3 - peg
+  )
+  (:init
+    (free-gripper)
+    (on cube3 peg1)
+    (on cube2 cube3)
+    (on cube1 cube2)
+    (clear peg2)
+    (clear peg3)
+    (clear cube1)
+    (smaller cube1 cube2)
+    (smaller cube1 cube3)
+    (smaller cube1 peg1)
+    (smaller cube1 peg2)
+    (smaller cube1 peg3)
+    (smaller cube2 cube3)
+    (smaller cube2 peg1)
+    (smaller cube2 peg2)
+    (smaller cube2 peg3)
+    (smaller cube3 peg1)
+    (smaller cube3 peg2)
+    (smaller cube3 peg3)
+  )
+  (:goal
+    (and
+      (on cube1 cube2)
+      (on cube2 cube3)
+      (on cube3 peg3)
+    )
+  )
+)

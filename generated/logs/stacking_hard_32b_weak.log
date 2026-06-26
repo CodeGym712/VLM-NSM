@@ -1,0 +1,38 @@
+Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
+Loaded 22 samples from /rhome/zhaowm/my_project/VLM-NSM/data/language_variations/stacking_hard_zh_en.jsonl
+Loading checkpoint shards:   0%|          | 0/17 [00:00<?, ?it/s]Loading checkpoint shards:   6%|▌         | 1/17 [00:21<05:46, 21.67s/it]Loading checkpoint shards:  12%|█▏        | 2/17 [00:46<05:53, 23.54s/it]Loading checkpoint shards:  18%|█▊        | 3/17 [01:08<05:19, 22.82s/it]Loading checkpoint shards:  24%|██▎       | 4/17 [01:33<05:07, 23.67s/it]Loading checkpoint shards:  29%|██▉       | 5/17 [02:03<05:12, 26.00s/it]Loading checkpoint shards:  35%|███▌      | 6/17 [02:32<04:58, 27.10s/it]Loading checkpoint shards:  41%|████      | 7/17 [02:58<04:27, 26.77s/it]Loading checkpoint shards:  47%|████▋     | 8/17 [03:03<02:56, 19.62s/it]Loading checkpoint shards:  53%|█████▎    | 9/17 [03:08<02:00, 15.00s/it]Loading checkpoint shards:  59%|█████▉    | 10/17 [03:23<01:45, 15.10s/it]Loading checkpoint shards:  65%|██████▍   | 11/17 [03:47<01:47, 17.96s/it]Loading checkpoint shards:  71%|███████   | 12/17 [04:10<01:36, 19.38s/it]Loading checkpoint shards:  76%|███████▋  | 13/17 [04:35<01:24, 21.19s/it]Loading checkpoint shards:  82%|████████▏ | 14/17 [05:00<01:06, 22.12s/it]Loading checkpoint shards:  88%|████████▊ | 15/17 [05:23<00:45, 22.56s/it]Loading checkpoint shards:  94%|█████████▍| 16/17 [05:49<00:23, 23.40s/it]Loading checkpoint shards: 100%|██████████| 17/17 [06:07<00:00, 22.05s/it]Loading checkpoint shards: 100%|██████████| 17/17 [06:07<00:00, 21.64s/it]
+Model loaded with weak prompt, processing 22 samples...
+  FAIL stacking_hard_alias_001: parse=True align=False goal=False [schema_error]
+  FAIL stacking_hard_alias_002: parse=True align=False goal=False [schema_error]
+  FAIL stacking_hard_alias_003: parse=True align=False goal=False [schema_error]
+  FAIL stacking_hard_alias_004: parse=True align=False goal=False [schema_error]
+  FAIL stacking_hard_underspecified_001: parse=True align=False goal=False [schema_error]
+  FAIL stacking_hard_underspecified_002: parse=False align=False goal=False [json_parse_error]
+  FAIL stacking_hard_underspecified_003: parse=True align=False goal=False [schema_error]
+  FAIL stacking_hard_underspecified_004: parse=True align=False goal=False [schema_error]
+  FAIL stacking_hard_underspecified_005: parse=True align=False goal=False [schema_error]
+  FAIL stacking_hard_object_synonym_001: parse=True align=False goal=False [schema_error]
+  FAIL stacking_hard_object_synonym_002: parse=True align=False goal=False [schema_error]
+  FAIL stacking_hard_object_synonym_003: parse=True align=False goal=False [schema_error]
+  FAIL stacking_hard_object_synonym_004: parse=True align=False goal=False [schema_error]
+  FAIL stacking_hard_mixed_language_001: parse=True align=False goal=False [schema_error]
+  FAIL stacking_hard_mixed_language_002: parse=True align=False goal=False [schema_error]
+  FAIL stacking_hard_mixed_language_003: parse=True align=False goal=False [schema_error]
+  FAIL stacking_hard_noisy_format_001: parse=True align=False goal=False [schema_error]
+  FAIL stacking_hard_noisy_format_002: parse=True align=False goal=False [schema_error]
+  FAIL stacking_hard_noisy_format_003: parse=True align=False goal=False [schema_error]
+  FAIL stacking_hard_partial_goal_001: parse=True align=False goal=False [schema_error]
+  FAIL stacking_hard_partial_goal_002: parse=True align=False goal=False [schema_error]
+  FAIL stacking_hard_partial_goal_003: parse=True align=False goal=False [schema_error]
+
+Results written to /rhome/zhaowm/my_project/VLM-NSM/generated/results/language_variation_stacking_hard_qwen25_32b.json
+CSV written to /rhome/zhaowm/my_project/VLM-NSM/generated/results/language_variation_stacking_hard_qwen25_32b.csv
+
+--- Summary for stacking (qwen25_32b, hard, weak, full) ---
+Total samples:    22
+JSON parse rate:  21/22 (95.5%)
+Alignment rate:   0/22 (0.0%)
+Repair rate:      0/22 (0.0%)
+Planner rate:     0/22 (0.0%)
+Execution rate:   0/22 (0.0%)
+Goal success rate:0/22 (0.0%)

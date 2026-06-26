@@ -1,0 +1,119 @@
+{
+  "per_phase_mse": {
+    "train": {
+      "reach_pick": {
+        "n_samples": 11498,
+        "mse": 0.012444443072083857,
+        "std": 0.0604710779655751
+      },
+      "grasp": {
+        "n_samples": 11498,
+        "mse": 0.02861696054923271,
+        "std": 0.121029797282994
+      },
+      "lift": {
+        "n_samples": 11498,
+        "mse": 0.11092505228616246,
+        "std": 0.538858541341382
+      },
+      "reach_place": {
+        "n_samples": 11498,
+        "mse": 0.0217530975377914,
+        "std": 0.07554755285784816
+      },
+      "release": {
+        "n_samples": 11498,
+        "mse": 0.03052536090624396,
+        "std": 0.12674679735011754
+      },
+      "retreat": {
+        "n_samples": 11691,
+        "mse": 0.03646943080268485,
+        "std": 0.11140420787701698
+      }
+    },
+    "val": {
+      "reach_pick": {
+        "n_samples": 2999,
+        "mse": 0.01072489478208432,
+        "std": 0.05188073810344831
+      },
+      "grasp": {
+        "n_samples": 2999,
+        "mse": 0.02388509697943283,
+        "std": 0.11205759626291725
+      },
+      "lift": {
+        "n_samples": 2999,
+        "mse": 0.10081148789175447,
+        "std": 0.38819003901870824
+      },
+      "reach_place": {
+        "n_samples": 2999,
+        "mse": 0.0336842521472514,
+        "std": 0.0984837810538102
+      },
+      "release": {
+        "n_samples": 2999,
+        "mse": 0.040616843824004434,
+        "std": 0.11448166562531371
+      },
+      "retreat": {
+        "n_samples": 3055,
+        "mse": 0.03597874241999584,
+        "std": 0.094985238775695
+      }
+    }
+  },
+  "action_distribution": {
+    "dim_0": {
+      "dataset_mean": 7.428571393575112e-07,
+      "dataset_std": 0.999987781047821,
+      "policy_mean": 0.016276638954877853,
+      "policy_std": 0.9613687992095947,
+      "note": ""
+    },
+    "dim_1": {
+      "dataset_mean": -3.043773588728982e-08,
+      "dataset_std": 1.0000423192977905,
+      "policy_mean": 0.012899763882160187,
+      "policy_std": 0.917472243309021,
+      "note": ""
+    },
+    "dim_2": {
+      "dataset_mean": 6.114014468039386e-07,
+      "dataset_std": 1.0000317096710205,
+      "policy_mean": 0.031921714544296265,
+      "policy_std": 0.9530770778656006,
+      "note": ""
+    },
+    "dim_3": {
+      "dataset_mean": 0.0,
+      "dataset_std": 0.0,
+      "policy_mean": -7.881851161073428e-06,
+      "policy_std": 8.906402399588842e-06,
+      "note": "near-zero dataset variance"
+    },
+    "dim_4": {
+      "dataset_mean": 0.0,
+      "dataset_std": 0.0,
+      "policy_mean": -0.00041155051440000534,
+      "policy_std": 0.0002823500835802406,
+      "note": "near-zero dataset variance"
+    },
+    "dim_5": {
+      "dataset_mean": 0.0,
+      "dataset_std": 0.0,
+      "policy_mean": -2.3419058834406314e-06,
+      "policy_std": 1.5079805962159298e-05,
+      "note": "near-zero dataset variance"
+    },
+    "dim_6": {
+      "dataset_mean": 1.771123265825736e-07,
+      "dataset_std": 1.000046730041504,
+      "policy_mean": 0.0391940139234066,
+      "policy_std": 0.9875937700271606,
+      "note": ""
+    }
+  }
+}

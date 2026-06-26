@@ -1,0 +1,1 @@
+{'task_type': 'stacking', 'object_bindings': {'top block': 'cube1', 'bottom block': 'cube3'}, 'goal_predicates': [['on', 'cube1', 'cube2'], ['on', 'cube2', 'cube3'], ['on', 'cube3', 'table']]}

@@ -1,0 +1,211 @@
+{
+  "per_phase_mse": {
+    "train": {
+      "reach_pick": {
+        "n_samples": 9236,
+        "mse": 0.0054404247155675056,
+        "std": 0.00619923786069203
+      },
+      "grasp": {
+        "n_samples": 9166,
+        "mse": 0.014580681675055175,
+        "std": 0.08279939714928224
+      },
+      "lift": {
+        "n_samples": 9535,
+        "mse": 0.0010415295392633076,
+        "std": 0.00041665329446275334
+      },
+      "reach_place": {
+        "n_samples": 40258,
+        "mse": 0.027225756319826034,
+        "std": 0.10991803610980093
+      },
+      "release": {
+        "n_samples": 0,
+        "mse": 0.0,
+        "std": 0.0
+      },
+      "retreat": {
+        "n_samples": 0,
+        "mse": 0.0,
+        "std": 0.0
+      }
+    },
+    "val": {
+      "reach_pick": {
+        "n_samples": 2380,
+        "mse": 0.006858795189505106,
+        "std": 0.007442488702284543
+      },
+      "grasp": {
+        "n_samples": 2698,
+        "mse": 0.025317088277654984,
+        "std": 0.07970737292052656
+      },
+      "lift": {
+        "n_samples": 2379,
+        "mse": 0.002001642712347676,
+        "std": 0.004236893169707485
+      },
+      "reach_place": {
+        "n_samples": 9744,
+        "mse": 0.0314816956876976,
+        "std": 0.12152456535403242
+      },
+      "release": {
+        "n_samples": 0,
+        "mse": 0.0,
+        "std": 0.0
+      },
+      "retreat": {
+        "n_samples": 0,
+        "mse": 0.0,
+        "std": 0.0
+      }
+    }
+  },
+  "action_distribution": {
+    "dim_0": {
+      "dataset_mean": 0.004468088503926992,
+      "dataset_std": 0.9998454451560974,
+      "policy_mean": -0.0013927536783739924,
+      "policy_std": 0.993303656578064,
+      "note": ""
+    },
+    "dim_1": {
+      "dataset_mean": -0.01745438389480114,
+      "dataset_std": 0.9731591939926147,
+      "policy_mean": -0.030107982456684113,
+      "policy_std": 0.9715099334716797,
+      "note": ""
+    },
+    "dim_2": {
+      "dataset_mean": 0.0020808193366974592,
+      "dataset_std": 1.0033875703811646,
+      "policy_mean": 0.03015947714447975,
+      "policy_std": 0.9724805355072021,
+      "note": ""
+    },
+    "dim_3": {
+      "dataset_mean": 0.0,
+      "dataset_std": 0.0,
+      "policy_mean": 0.022840438410639763,
+      "policy_std": 0.06329263001680374,
+      "note": "near-zero dataset variance"
+    },
+    "dim_4": {
+      "dataset_mean": 0.0,
+      "dataset_std": 0.0,
+      "policy_mean": -0.04197867214679718,
+      "policy_std": 0.07953071594238281,
+      "note": "near-zero dataset variance"
+    },
+    "dim_5": {
+      "dataset_mean": 0.0,
+      "dataset_std": 0.0,
+      "policy_mean": -0.03972669318318367,
+      "policy_std": 0.08477228879928589,
+      "note": "near-zero dataset variance"
+    },
+    "dim_6": {
+      "dataset_mean": 0.006227544974535704,
+      "dataset_std": 0.9992875456809998,
+      "policy_mean": 0.005806551780551672,
+      "policy_std": 0.9790676832199097,
+      "note": ""
+    }
+  },
+  "endpoint_errors": {
+    "reach_pick": {
+      "n_phase_endpoints": 20,
+      "dataset_endpoint_error": {
+        "mean": 0.11625342331826687,
+        "std": 0.0030024875509958716,
+        "p50": 0.11526437476277351,
+        "p95": 0.12090535648167133
+      },
+      "policy_endpoint_error": {
+        "mean": 11.682088541984559,
+        "std": 3.1530521535732214,
+        "p50": 12.15740442276001,
+        "p95": 16.13334665298462
+      }
+    },
+    "grasp": {
+      "n_phase_endpoints": 20,
+      "dataset_endpoint_error": {
+        "mean": 0.019845187477767468,
+        "std": 0.0010726218076530414,
+        "p50": 0.019598452374339104,
+        "p95": 0.019996922928839925
+      },
+      "policy_endpoint_error": {
+        "mean": 8.356406307220459,
+        "std": 2.8342256098181156,
+        "p50": 7.616526126861572,
+        "p95": 9.355297183990487
+      }
+    },
+    "lift": {
+      "n_phase_endpoints": 20,
+      "dataset_endpoint_error": {
+        "mean": 0.13013702594729998,
+        "std": 0.0008031237144429054,
+        "p50": 0.13027818332708957,
+        "p95": 0.13063517999011057
+      },
+      "policy_endpoint_error": {
+        "mean": 8.321943585808118,
+        "std": 0.26565034497505974,
+        "p50": 8.358547355573183,
+        "p95": 8.636309576412755
+      }
+    },
+    "reach_place": {
+      "n_phase_endpoints": 20,
+      "dataset_endpoint_error": {
+        "mean": 0.05672585080622065,
+        "std": 0.008063573155937642,
+        "p50": 0.05492420137912038,
+        "p95": 0.06487455426849194
+      },
+      "policy_endpoint_error": {
+        "mean": 14.255872932943948,
+        "std": 4.280966374353586,
+        "p50": 15.375610437088579,
+        "p95": 19.689789223759778
+      }
+    },
+    "release": {
+      "n_phase_endpoints": 0,
+      "dataset_endpoint_error": {
+        "mean": 0.0,
+        "std": 0.0,
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "policy_endpoint_error": {
+        "mean": 0.0,
+        "std": 0.0,
+        "p50": 0.0,
+        "p95": 0.0
+      }
+    },
+    "retreat": {
+      "n_phase_endpoints": 0,
+      "dataset_endpoint_error": {
+        "mean": 0.0,
+        "std": 0.0,
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "policy_endpoint_error": {
+        "mean": 0.0,
+        "std": 0.0,
+        "p50": 0.0,
+        "p95": 0.0
+      }
+    }
+  }
+}

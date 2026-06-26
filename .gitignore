@@ -1,0 +1,98 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# ===== Virtual environments =====
+.venv/
+nsm/
+.venv-minimal/
+venv/
+
+# ===== Sensitive config =====
+.env
+*.env
+!*.env.example
+!configs/*.env.example
+configs/dashscope_qwen.env
+
+# ===== Large generated data (ignore entirely) =====
+generated/datasets/
+generated/models/
+generated/videos/
+generated/demos/
+generated/eval_inputs/
+generated/coarse_programs/
+
+# ===== Generated results — keep only .gitkeep =====
+generated/results/*
+!generated/results/.gitkeep
+
+# ===== Small generated artifacts (keep specific text formats) =====
+# pddl/ — all .pddl files are at top level, no subdirs
+generated/pddl/*
+!generated/pddl/*.pddl
+!generated/pddl/.gitkeep
+
+# plans/ — keep only .gitkeep
+generated/plans/*
+!generated/plans/.gitkeep
+
+# logs/ — allow .log (top level) and .txt (qwen_outputs/ subdir)
+generated/logs/*
+!generated/logs/*.log
+!generated/logs/.gitkeep
+!generated/logs/qwen_outputs/
+generated/logs/qwen_outputs/*
+!generated/logs/qwen_outputs/*.txt
+
+# reports/ — allow .md
+generated/reports/*
+!generated/reports/*.md
+
+# report_tables/ — allow .md, .json, .csv at any depth
+generated/report_tables/**
+!generated/report_tables/**/
+!generated/report_tables/**/*.md
+!generated/report_tables/**/*.json
+!generated/report_tables/**/*.csv
+
+# configs/ — allow .json at any depth
+generated/configs/**
+!generated/configs/**/
+!generated/configs/**/*.json
+
+# detection/ — allow .json at any depth
+generated/detection/**
+!generated/detection/**/
+!generated/detection/**/*.json
+
+# ===== Large model files (regardless of location) =====
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.ckpt
+*.onnx
+*.h5
+*.pb
+*.mar
+
+# ===== IDE =====
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== Jupyter =====
+.ipynb_checkpoints/
+
+# ===== Migration backup =====
+.git.empty.backup/
