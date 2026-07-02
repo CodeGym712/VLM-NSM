@@ -1,4 +1,5 @@
 unit:
+  - tests/test_audit_embodied_transitions.py
   - tests/test_local_profile.py
   - tests/test_repository_hygiene.py
   - tests/test_action_grounder.py
@@ -16,6 +17,8 @@ unit:
   - tests/test_camera_projection_geometry.py
   - tests/test_compare_scene_grounding_results.py
   - tests/test_dataset_manifest_schema.py
+  - tests/test_embodied_transition.py
+  - tests/test_embodied_transition_schema.py
   - tests/test_debug_camera_projection_consistency.py
   - tests/test_demo_dataset_classification.py
   - tests/test_demo_meta_schema.py
@@ -35,6 +38,8 @@ unit:
   - tests/test_success_metric_semantics.py
   - tests/test_termination_failure_monitor.py
   - tests/test_transition_state_machine.py
+  - tests/test_transition_dataset.py
+  - tests/test_transition_recorder.py
   - tests/test_world_spatial_relations.py
   - tests/test_yolo_label_writer.py
 

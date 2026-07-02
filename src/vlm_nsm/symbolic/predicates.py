@@ -37,6 +37,9 @@ class Predicate:
     args: tuple[str, ...]
     confidence: float = 1.0
     source: str = "unknown"
+    observed_at: float | None = None
+    freshness_seconds: float | None = None
+    evidence_id: str = ""
 
     def __post_init__(self):
         if self.name not in PREDICATE_NAMES:
@@ -59,6 +62,9 @@ class Predicate:
             "args": list(self.args),
             "confidence": self.confidence,
             "source": self.source,
+            "observed_at": self.observed_at,
+            "freshness_seconds": self.freshness_seconds,
+            "evidence_id": self.evidence_id,
         }
 
     def __str__(self) -> str:

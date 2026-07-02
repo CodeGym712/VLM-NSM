@@ -1,0 +1,25 @@
+schema_version: predicate_vocab/v1
+vocabulary_id: predicate_vocab_v1
+status: frozen_for_p0
+predicates:
+  - name: on
+    arity: 2
+    argument_types: [cube, support]
+  - name: ontable
+    arity: 1
+    argument_types: [cube]
+  - name: clear
+    arity: 1
+    argument_types: [support]
+  - name: holding
+    arity: 1
+    argument_types: [cube]
+  - name: handempty
+    arity: 0
+    argument_types: []
+  - name: graspable
+    arity: 1
+    argument_types: [cube]
+observation_sources: [oracle, geometry, detector, vlm, derived, unknown]
+research_boundary: >-
+  P0-P5 treat this vocabulary as known. Predicate invention is not part of the core thesis claim.

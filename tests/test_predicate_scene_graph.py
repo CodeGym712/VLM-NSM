@@ -12,6 +12,7 @@ from vlm_nsm.core.predicate_scene_graph import (
 )
 from vlm_nsm.symbolic.predicates import (
     SymbolicSceneGraph,
+    Predicate,
     on,
     ontable,
     clear,
@@ -92,6 +93,26 @@ class TestPredicateSceneGraph:
         j = psg.to_json()
         d = json.loads(j)
         assert d["robot"]["holding_object"] is None
+
+    def test_predicate_serialization_preserves_observation_provenance(self):
+        psg = PredicateSceneGraph()
+        psg.add_predicate(Predicate(
+            "clear",
+            ("cube1",),
+            confidence=0.8,
+            source="geometry",
+            observed_at=123.5,
+            freshness_seconds=0.25,
+            evidence_id="obs-clear-001",
+        ))
+
+        serialized = psg.to_dict()["predicates"][0]
+
+        assert serialized["source"] == "geometry"
+        assert serialized["confidence"] == 0.8
+        assert serialized["observed_at"] == 123.5
+        assert serialized["freshness_seconds"] == 0.25
+        assert serialized["evidence_id"] == "obs-clear-001"
 
     def test_to_prompt_text_2block(self):
         psg = PredicateSceneGraph()

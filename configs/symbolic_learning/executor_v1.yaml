@@ -1,0 +1,17 @@
+schema_version: executor_manifest/v1
+executor_id: executor_v1
+status: frozen_for_p0
+implementation:
+  atomic_skills: [AtomicPick, AtomicPlace]
+  controller: OperationalSpacePID
+  source: src/vlm_nsm/embodied/controllers/operational_space_pid.py
+phase_gains:
+  reach_pick: {kp: 0.10, ki: 0.005, kd: 0.0, max_delta: 0.02, i_max: 0.03}
+  grasp: {kp: 0.07, ki: 0.002, kd: 0.0, max_delta: 0.01, i_max: 0.02}
+  lift: {kp: 0.10, ki: 0.002, kd: 0.0, max_delta: 0.02, i_max: 0.03}
+  reach_place: {kp: 0.08, ki: 0.005, kd: 0.0, max_delta: 0.015, i_max: 0.03}
+  release: {kp: 0.04, ki: 0.001, kd: 0.0, max_delta: 0.005, i_max: 0.01}
+  retreat: {kp: 0.08, ki: 0.001, kd: 0.0, max_delta: 0.02, i_max: 0.03}
+recording_rule: >-
+  Every transition must store executor.name=atomic_pid and executor.version=executor_v1.
+  Any gain or state-machine behavior change requires a new executor manifest version.
