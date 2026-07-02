@@ -31,6 +31,7 @@ unit:
   - tests/test_replay_controller.py
   - tests/test_replay_sanity_check.py
   - tests/test_result_field_names.py
+  - tests/test_run_coarse_program_transition_recording.py
   - tests/test_rgb_bbox_generation.py
   - tests/test_skill_types.py
   - tests/test_stacking_utils.py
