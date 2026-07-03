@@ -10,7 +10,11 @@ build/
 .venv/
 nsm/
 .venv-minimal/
+.venv-research/
 venv/
+
+# ===== Local agent / audit scratch =====
+tmp/
 
 # ===== Sensitive config =====
 .env
