@@ -370,3 +370,114 @@ P3-T7 已经把“当前 operator clauses 能解释哪些任务目标”量化�
 ```text
 goal-aware target binding + multi-object skeleton recall repair
 ```
+
+---
+
+## 十一、追加进展：P3-T8 Goal-aware skeleton v2
+
+### T8 动机
+
+T7 的 26 个 failed demos 中，大量 demo 的最终 goal 谓词已经在 final frame 中出现，并且相对 initial frame 是新增的。也就是说：
+
+```text
+PredicateTrace 包含目标效果
+但 event-to-operator binding 没能把它绑定成 place step
+```
+
+因此 T8 不修改原始 event，而是新增一份 v2 skeleton：
+
+```text
+v1 skeleton + final-state goal effect repair → v2 skeleton
+```
+
+所有 repair step 均标记为：
+
+```text
+source = goal_implied_final_state_repair
+confidence = risky
+risk_notes = [
+  goal_implied_effect_from_final_state,
+  event_binding_missed_goal_relation
+]
+```
+
+### T8 产物
+
+```text
+p3_plan_skeletons_v2.jsonl
+p3_plan_skeleton_repair_summary.json
+p3_object_centric_episodes_v2.jsonl
+p3_object_centric_summary_v2.json
+p3_operator_clauses_v2.json
+p3_operator_clause_report_v2.md
+p3_goal_replay_eval_v2.json
+p3_goal_counterexamples_v2.jsonl
+p3_goal_replay_report_v2.md
+p3_counterexample_revision_plan_v2.json
+p3_counterexample_revision_plan_v2.md
+```
+
+### T8 结果
+
+```text
+Skeleton repair count: 26
+Repair operator: place x26
+
+Goal replay v1:
+- covered: 31/60
+- failed: 26/60
+- blocked: 3/60
+
+Goal replay v2:
+- covered: 57/60
+- failed: 0/60
+- blocked: 3/60
+```
+
+剩余 3 个 blocked 全部来自：
+
+```text
+push_the_plate_to_the_front_of_the_stove
+```
+
+原因：
+
+```text
+goal_depends_on_at_region_excluded_from_P3
+```
+
+### v2 operator clauses
+
+```text
+pick(?obj): support=29, conditional
+place(?obj, ?target): support=53, conditional
+open(?drawer): support=6, trusted
+turn_on(?device): support=3, trusted
+```
+
+`place` 的 support 从 27 提升到 53，但大部分新增 support 来自 final-state goal repair，因此只能作为反例驱动的修订证据，不能直接宣称为完全干净的 operator 学习结果。
+
+### 新验证
+
+```text
+tests/test_p3_symbolic_induction.py
+12 passed
+```
+
+### 当前 P3 状态
+
+本地 P3 已推进到当前数据能支持的上限：
+
+1. PredicateTrace → Effect events 已完成；
+2. Effect events → Operator candidates 已完成；
+3. Object-centric episodes 已完成；
+4. Operator clauses v1/v2 已完成；
+5. Goal replay + counterexample revision 已完成；
+6. 非 `at_region` 任务在 v2 下 57/57 covered；
+7. `push` 任务仍需服务器端完成 `at_region replacement queries` 后才能继续。
+
+当前阻塞：
+
+```text
+需要服务器端验证 at_region replacement，并重新开放 push_the_plate_to_the_front_of_the_stove。
+```

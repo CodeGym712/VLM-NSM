@@ -897,6 +897,22 @@ def _episode_ref(item: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def frame_atom_sets_by_demo(frames: Sequence[NormalizedFrame]) -> dict[str, dict[str, set[Atom]]]:
+    grouped: dict[str, list[NormalizedFrame]] = defaultdict(list)
+    for frame in frames:
+        grouped[f"{frame.file}::{frame.demo}"].append(frame)
+    result: dict[str, dict[str, set[Atom]]] = {}
+    for demo_id, demo_frames in grouped.items():
+        ordered = sorted(demo_frames, key=lambda frame: frame.t)
+        if not ordered:
+            continue
+        result[demo_id] = {
+            "initial": set(ordered[0].trusted),
+            "final": set(ordered[-1].trusted),
+        }
+    return result
+
+
 def canonical_goal_arg(name: str, predicate: str) -> str:
     """Normalize BDDL goal arguments into P3 predicate atom names."""
     value = canonical_entity(name)
@@ -962,6 +978,140 @@ def goal_specs_from_mapping(package_dir: Path) -> dict[str, list[dict[str, Any]]
             )
         goals_by_task[task] = goals
     return goals_by_task
+
+
+def repair_skeletons_with_goal_effects(
+    skeletons: Sequence[Mapping[str, Any]],
+    goals_by_task: Mapping[str, Sequence[Mapping[str, Any]]],
+    atom_sets_by_demo: Mapping[str, Mapping[str, set[Atom]]],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Add a risky v2 step when final state proves a missed goal effect.
+
+    This is not allowed to erase the v1 evidence.  It creates a separate v2
+    skeleton that says: "the final PredicateTrace contains the goal effect, but
+    the event binding failed to turn it into an operator step."  That is exactly
+    the counterexample-driven revision signal P3 needs.
+    """
+    repaired: list[dict[str, Any]] = []
+    added_repairs: list[dict[str, Any]] = []
+
+    for skeleton in skeletons:
+        task = str(skeleton.get("task", ""))
+        demo_id = str(skeleton.get("demo_id"))
+        goals = list(goals_by_task.get(task, []))
+        frame_sets = atom_sets_by_demo.get(demo_id, {})
+        initial_atoms = set(frame_sets.get("initial", set()))
+        final_atoms = set(frame_sets.get("final", set()))
+        steps = [dict(step) for step in skeleton.get("steps", [])]
+
+        for spec in goals:
+            atom = tuple(spec["atom"])
+            if atom[0] == "at_region":
+                continue
+            if any(step_satisfies_goal(step, spec) for step in steps):
+                continue
+            if not _goal_spec_matches_atom_set(spec, final_atoms):
+                continue
+            if _goal_spec_matches_atom_set(spec, initial_atoms):
+                # Goal already true at t=0 is not an operator effect.
+                continue
+
+            repair_step = _repair_step_from_goal_spec(spec, skeleton, len(steps))
+            if repair_step is None:
+                continue
+            steps.append(repair_step)
+            added_repairs.append(
+                {
+                    "demo_id": demo_id,
+                    "task": task,
+                    "goal": atom_to_list(atom),
+                    "operator": repair_step["operator"],
+                    "bindings": repair_step["bindings"],
+                    "reason": "final_state_goal_effect_not_bound_to_event",
+                }
+            )
+
+        repaired_skeleton = dict(skeleton)
+        steps.sort(key=lambda item: (int(item.get("t_start", 10**9)), int(item.get("t_end", 10**9))))
+        repaired_skeleton["steps"] = steps
+        repaired_skeleton["operator_sequence"] = [str(step["operator"]) for step in steps]
+        repaired_skeleton["status"] = "covered" if steps else "no_skeleton_steps"
+        repaired.append(repaired_skeleton)
+
+    summary = {
+        "input_skeletons": len(skeletons),
+        "repaired_skeletons": len(repaired),
+        "repair_count": len(added_repairs),
+        "repair_operator_counts": dict(Counter(item["operator"] for item in added_repairs)),
+        "repair_examples": added_repairs[:20],
+    }
+    return repaired, summary
+
+
+def _goal_spec_matches_atom_set(spec: Mapping[str, Any], atoms: set[Atom]) -> bool:
+    return any(_atom_satisfies_goal_spec(atom, spec) for atom in atoms)
+
+
+def _atom_satisfies_goal_spec(atom: Atom, spec: Mapping[str, Any]) -> bool:
+    goal = tuple(spec["atom"])
+    aliases = spec.get("arg_aliases") or []
+    if atom[0] != goal[0]:
+        return False
+    if len(goal) == 2 and len(atom) == 2:
+        return _value_matches_aliases(atom[1], aliases[0] if aliases else [goal[1]])
+    if len(goal) == 3 and len(atom) == 3:
+        return _value_matches_aliases(atom[1], aliases[0] if aliases else [goal[1]]) and _value_matches_aliases(
+            atom[2], aliases[1] if len(aliases) > 1 else [goal[2]]
+        )
+    return atom == goal
+
+
+def _repair_step_from_goal_spec(
+    spec: Mapping[str, Any],
+    skeleton: Mapping[str, Any],
+    step_index: int,
+) -> dict[str, Any] | None:
+    atom = tuple(spec["atom"])
+    t_estimate = _skeleton_end_time(skeleton) + 1 + step_index
+    if atom[0] in {"on", "in"}:
+        return {
+            "operator": "place",
+            "bindings": {"obj": atom[1], "target": atom[2], "relation": atom[0]},
+            "t_start": t_estimate,
+            "t_end": t_estimate,
+            "source": "goal_implied_final_state_repair",
+            "confidence": "risky",
+            "risk_notes": [
+                "goal_implied_effect_from_final_state",
+                "event_binding_missed_goal_relation",
+            ],
+        }
+    if atom[0] == "open":
+        return {
+            "operator": "open",
+            "bindings": {"drawer": atom[1]},
+            "t_start": t_estimate,
+            "t_end": t_estimate,
+            "source": "goal_implied_final_state_repair",
+            "confidence": "risky",
+            "risk_notes": ["goal_implied_effect_from_final_state"],
+        }
+    if atom[0] == "activated":
+        return {
+            "operator": "turn_on",
+            "bindings": {"device": atom[1]},
+            "t_start": t_estimate,
+            "t_end": t_estimate,
+            "source": "goal_implied_final_state_repair",
+            "confidence": "risky",
+            "risk_notes": ["goal_implied_effect_from_final_state"],
+        }
+    return None
+
+
+def _skeleton_end_time(skeleton: Mapping[str, Any]) -> int:
+    times = [int(step.get("t_end", step.get("t_start", 0))) for step in skeleton.get("steps", [])]
+    return max(times) if times else 0
 
 
 def goal_atoms_from_mapping(package_dir: Path) -> dict[str, list[Atom]]:
@@ -1367,6 +1517,31 @@ def run_p3_pipeline(package_dir: Path, out_dir: Path, holding_min_frames: int = 
     write_json(out_dir / "p3_counterexample_revision_plan.json", revision_plan)
     (out_dir / "p3_counterexample_revision_plan.md").write_text(revision_plan_md, encoding="utf-8")
 
+    goal_specs = goal_specs_from_mapping(package_dir)
+    skeletons_v2, skeleton_repair_summary = repair_skeletons_with_goal_effects(
+        skeletons,
+        goals_by_task=goal_specs,
+        atom_sets_by_demo=frame_atom_sets_by_demo(normalized),
+    )
+    write_jsonl(out_dir / "p3_plan_skeletons_v2.jsonl", skeletons_v2)
+    write_json(out_dir / "p3_plan_skeleton_repair_summary.json", skeleton_repair_summary)
+    object_episodes_v2, object_episode_summary_v2 = build_object_centric_episodes(skeletons_v2)
+    write_jsonl(out_dir / "p3_object_centric_episodes_v2.jsonl", object_episodes_v2)
+    write_json(out_dir / "p3_object_centric_summary_v2.json", object_episode_summary_v2)
+    clauses_v2, clause_report_v2 = infer_operator_clauses_v1(object_episodes_v2)
+    write_json(out_dir / "p3_operator_clauses_v2.json", clauses_v2)
+    (out_dir / "p3_operator_clause_report_v2.md").write_text(clause_report_v2, encoding="utf-8")
+    goal_replay_v2, counterexamples_v2, goal_report_md_v2 = replay_goals_against_skeletons(
+        skeletons_v2,
+        goals_by_task=goal_specs,
+    )
+    write_json(out_dir / "p3_goal_replay_eval_v2.json", goal_replay_v2)
+    write_jsonl(out_dir / "p3_goal_counterexamples_v2.jsonl", counterexamples_v2)
+    (out_dir / "p3_goal_replay_report_v2.md").write_text(goal_report_md_v2, encoding="utf-8")
+    revision_plan_v2, revision_plan_md_v2 = build_counterexample_revision_plan(counterexamples_v2)
+    write_json(out_dir / "p3_counterexample_revision_plan_v2.json", revision_plan_v2)
+    (out_dir / "p3_counterexample_revision_plan_v2.md").write_text(revision_plan_md_v2, encoding="utf-8")
+
     final_summary = {
         "ok": True,
         "package_dir": str(package_dir),
@@ -1382,6 +1557,10 @@ def run_p3_pipeline(package_dir: Path, out_dir: Path, holding_min_frames: int = 
         "object_episode_counts": object_episode_summary["episode_type_counts"],
         "operator_clause_count": len(clauses),
         "goal_replay": goal_replay["summary"],
+        "skeleton_repair": skeleton_repair_summary,
+        "object_episode_counts_v2": object_episode_summary_v2["episode_type_counts"],
+        "operator_clause_count_v2": len(clauses_v2),
+        "goal_replay_v2": goal_replay_v2["summary"],
         "risk_controls": {
             "holding_min_frames": holding_min_frames,
             "merge_gap": merge_gap,

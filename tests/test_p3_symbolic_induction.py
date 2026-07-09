@@ -9,6 +9,7 @@ from vlm_nsm.research.p3_symbolic_induction import (
     infer_operator_clauses_v1,
     normalize_demo_rows,
     raw_atoms_from_predicates,
+    repair_skeletons_with_goal_effects,
     replay_goals_against_skeletons,
 )
 
@@ -224,3 +225,50 @@ def test_builds_counterexample_revision_plan_by_reason():
     assert plan["reason_counts"]["missing_place_step"] == 2
     assert plan["groups"][0]["reason"] == "missing_place_step"
     assert "Counterexample-driven" in md
+
+
+def test_repairs_missing_place_from_final_goal_effect():
+    skeletons = [
+        {
+            "demo_id": "demo_file.hdf5::demo_0",
+            "file": "demo_file.hdf5",
+            "demo": "demo_0",
+            "task": "toy_place",
+            "operator_sequence": ["pick"],
+            "steps": [
+                {
+                    "operator": "pick",
+                    "bindings": {"obj": "bowl_1"},
+                    "t_start": 5,
+                    "t_end": 6,
+                    "confidence": "trusted",
+                    "risk_notes": [],
+                }
+            ],
+        }
+    ]
+    repaired, summary = repair_skeletons_with_goal_effects(
+        skeletons,
+        {"toy_place": [{"atom": ("on", "bowl_1", "plate_1"), "arg_aliases": [["bowl_1"], ["plate_1"]]}]},
+        {
+            "demo_file.hdf5::demo_0": {
+                "initial": {("on", "bowl_1", "table")},
+                "final": {("on", "bowl_1", "plate_1")},
+            }
+        },
+    )
+
+    assert summary["repair_count"] == 1
+    assert repaired[0]["operator_sequence"] == ["pick", "place"]
+    assert repaired[0]["steps"][-1]["source"] == "goal_implied_final_state_repair"
+
+
+def test_does_not_repair_at_region_goal():
+    repaired, summary = repair_skeletons_with_goal_effects(
+        [{"demo_id": "d", "task": "push", "steps": [], "operator_sequence": []}],
+        {"push": [{"atom": ("at_region", "plate_1", "region"), "arg_aliases": [["plate_1"], ["region"]]}]},
+        {"d": {"initial": set(), "final": {("at_region", "plate_1", "region")}}},
+    )
+
+    assert summary["repair_count"] == 0
+    assert repaired[0]["operator_sequence"] == []
