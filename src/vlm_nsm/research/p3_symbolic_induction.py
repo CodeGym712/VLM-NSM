@@ -658,6 +658,233 @@ def infer_plan_skeletons(
     return skeletons, summary
 
 
+def build_object_centric_episodes(
+    skeletons: Sequence[Mapping[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Pair object-centric pick/place steps and keep non-pick-place actions.
+
+    The output is intentionally evidence preserving: every complete
+    pick-place episode points back to its source pick step and place step.
+    """
+    episodes: list[dict[str, Any]] = []
+    for skeleton in skeletons:
+        active_pick: dict[str, dict[str, Any]] = {}
+        for step in sorted(skeleton.get("steps", []), key=lambda item: (int(item["t_start"]), int(item["t_end"]))):
+            op = str(step["operator"])
+            bindings = dict(step.get("bindings") or {})
+
+            if op == "pick":
+                obj = bindings.get("obj")
+                if obj:
+                    active_pick[obj] = dict(step)
+                continue
+
+            if op == "place":
+                obj = bindings.get("obj")
+                target = bindings.get("target")
+                pick_step = active_pick.pop(obj, None) if obj else None
+                episodes.append(
+                    {
+                        "episode_type": "pick_place" if pick_step else "place_without_pick",
+                        "demo_id": skeleton["demo_id"],
+                        "file": skeleton["file"],
+                        "demo": skeleton["demo"],
+                        "task": skeleton["task"],
+                        "obj": obj,
+                        "target": target,
+                        "pick_t": pick_step.get("t_start") if pick_step else None,
+                        "place_t": step.get("t_start"),
+                        "duration": (int(step["t_start"]) - int(pick_step["t_start"])) if pick_step else None,
+                        "confidence": "risky"
+                        if (step.get("confidence") == "risky" or (pick_step and pick_step.get("confidence") == "risky"))
+                        else "trusted",
+                        "risk_notes": sorted(
+                            set((step.get("risk_notes") or []) + ((pick_step or {}).get("risk_notes") or []))
+                        ),
+                        "source_pick": pick_step,
+                        "source_place": step,
+                    }
+                )
+                continue
+
+            if op in {"open", "turn_on"}:
+                episodes.append(
+                    {
+                        "episode_type": op,
+                        "demo_id": skeleton["demo_id"],
+                        "file": skeleton["file"],
+                        "demo": skeleton["demo"],
+                        "task": skeleton["task"],
+                        "bindings": bindings,
+                        "t": step.get("t_start"),
+                        "confidence": step.get("confidence", "trusted"),
+                        "risk_notes": list(step.get("risk_notes") or []),
+                        "source_step": step,
+                    }
+                )
+
+        for obj, pick_step in sorted(active_pick.items()):
+            episodes.append(
+                {
+                    "episode_type": "pick_without_place",
+                    "demo_id": skeleton["demo_id"],
+                    "file": skeleton["file"],
+                    "demo": skeleton["demo"],
+                    "task": skeleton["task"],
+                    "obj": obj,
+                    "pick_t": pick_step.get("t_start"),
+                    "confidence": pick_step.get("confidence", "trusted"),
+                    "risk_notes": list(pick_step.get("risk_notes") or []),
+                    "source_pick": pick_step,
+                }
+            )
+
+    summary = {
+        "episode_count": len(episodes),
+        "episode_type_counts": dict(Counter(item["episode_type"] for item in episodes)),
+        "trusted_count": sum(1 for item in episodes if item.get("confidence") == "trusted"),
+        "risky_count": sum(1 for item in episodes if item.get("confidence") == "risky"),
+        "per_task": {
+            task: dict(counter)
+            for task, counter in sorted(
+                _counter_by_task_and_type(episodes).items(),
+                key=lambda item: item[0],
+            )
+        },
+    }
+    return episodes, summary
+
+
+def _counter_by_task_and_type(episodes: Sequence[Mapping[str, Any]]) -> dict[str, Counter]:
+    counters: dict[str, Counter] = defaultdict(Counter)
+    for item in episodes:
+        counters[str(item.get("task", ""))][str(item.get("episode_type", ""))] += 1
+    return counters
+
+
+def infer_operator_clauses_v1(episodes: Sequence[Mapping[str, Any]]) -> tuple[list[dict[str, Any]], str]:
+    """Build evidence-backed operator-clause templates from object episodes."""
+    by_type: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+    for episode in episodes:
+        by_type[str(episode["episode_type"])].append(episode)
+
+    clauses: list[dict[str, Any]] = []
+    if by_type.get("pick_place") or by_type.get("pick_without_place"):
+        pick_support = by_type.get("pick_place", []) + by_type.get("pick_without_place", [])
+        clauses.append(
+            {
+                "name": "pick",
+                "parameters": ["?obj"],
+                "preconditions_pos": [["handempty"]],
+                "preconditions_neg": [["holding", "?obj"]],
+                "effects_add": [["holding", "?obj"]],
+                "effects_del": [["handempty"]],
+                "support_count": len(pick_support),
+                "evidence_episode_types": dict(Counter(item["episode_type"] for item in pick_support)),
+                "confidence": "conditional",
+                "risk_notes": [
+                    "Derived from holding transition under >=3-frame risk mask.",
+                    "Object clear/support preconditions are not yet induced in v1.",
+                ],
+                "examples": [_episode_ref(item) for item in pick_support[:5]],
+            }
+        )
+
+    if by_type.get("pick_place") or by_type.get("place_without_pick"):
+        place_support = by_type.get("pick_place", []) + by_type.get("place_without_pick", [])
+        target_counts = Counter(str(item.get("target")) for item in place_support)
+        clauses.append(
+            {
+                "name": "place",
+                "parameters": ["?obj", "?target"],
+                "preconditions_pos": [["holding", "?obj"]],
+                "preconditions_neg": [],
+                "effects_add": [["handempty"], ["on-or-in", "?obj", "?target"]],
+                "effects_del": [["holding", "?obj"]],
+                "support_count": len(place_support),
+                "target_counts": dict(target_counts),
+                "confidence": "conditional",
+                "risk_notes": [
+                    "Target relation may appear before release; v1 uses fused skeleton evidence.",
+                    "on(table) remains conditional under P2v4.2 risk controls.",
+                ],
+                "examples": [_episode_ref(item) for item in place_support[:5]],
+            }
+        )
+
+    if by_type.get("open"):
+        clauses.append(
+            {
+                "name": "open",
+                "parameters": ["?drawer"],
+                "preconditions_pos": [["closed", "?drawer"]],
+                "preconditions_neg": [],
+                "effects_add": [["open", "?drawer"]],
+                "effects_del": [["closed", "?drawer"]],
+                "support_count": len(by_type["open"]),
+                "confidence": "trusted",
+                "risk_notes": [],
+                "examples": [_episode_ref(item) for item in by_type["open"][:5]],
+            }
+        )
+
+    if by_type.get("turn_on"):
+        clauses.append(
+            {
+                "name": "turn_on",
+                "parameters": ["?device"],
+                "preconditions_pos": [["deactivated", "?device"]],
+                "preconditions_neg": [],
+                "effects_add": [["activated", "?device"]],
+                "effects_del": [["deactivated", "?device"]],
+                "support_count": len(by_type["turn_on"]),
+                "confidence": "trusted",
+                "risk_notes": [],
+                "examples": [_episode_ref(item) for item in by_type["turn_on"][:5]],
+            }
+        )
+
+    report_lines = ["# P3 Operator Clauses v1", ""]
+    for clause in clauses:
+        report_lines.extend(
+            [
+                f"## {clause['name']}",
+                "",
+                f"- Support: {clause['support_count']}",
+                f"- Confidence: {clause['confidence']}",
+                f"- Preconditions +: `{clause['preconditions_pos']}`",
+                f"- Preconditions -: `{clause['preconditions_neg']}`",
+                f"- Effects +: `{clause['effects_add']}`",
+                f"- Effects -: `{clause['effects_del']}`",
+                f"- Risk notes: `{clause['risk_notes']}`",
+                "",
+            ]
+        )
+    report_lines.extend(
+        [
+            "## Scope",
+            "",
+            "These clauses are v1 templates induced from P3 object-centric episodes.",
+            "They are not final PDDL operators yet; P3-T7 should run counterexample",
+            "checks against task goals and revise preconditions/effects.",
+            "",
+        ]
+    )
+    return clauses, "\n".join(report_lines)
+
+
+def _episode_ref(item: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "demo_id": item.get("demo_id"),
+        "task": item.get("task"),
+        "obj": item.get("obj"),
+        "target": item.get("target"),
+        "pick_t": item.get("pick_t"),
+        "place_t": item.get("place_t"),
+        "t": item.get("t"),
+    }
+
+
 def write_markdown_reports(
     out_dir: Path,
     event_summary: Mapping[str, Any],
@@ -786,6 +1013,13 @@ def run_p3_pipeline(package_dir: Path, out_dir: Path, holding_min_frames: int = 
     write_json(out_dir / "p3_plan_skeleton_summary.json", skeleton_summary)
     write_markdown_reports(out_dir, event_summary, candidates, replay, skeleton_summary)
 
+    object_episodes, object_episode_summary = build_object_centric_episodes(skeletons)
+    write_jsonl(out_dir / "p3_object_centric_episodes.jsonl", object_episodes)
+    write_json(out_dir / "p3_object_centric_summary.json", object_episode_summary)
+    clauses, clause_report = infer_operator_clauses_v1(object_episodes)
+    write_json(out_dir / "p3_operator_clauses_v1.json", clauses)
+    (out_dir / "p3_operator_clause_report.md").write_text(clause_report, encoding="utf-8")
+
     final_summary = {
         "ok": True,
         "package_dir": str(package_dir),
@@ -798,6 +1032,8 @@ def run_p3_pipeline(package_dir: Path, out_dir: Path, holding_min_frames: int = 
         "demo_count": replay["demo_count"],
         "skeleton_covered_demos": skeleton_summary["covered_demos"],
         "skeleton_operator_counts": skeleton_summary["operator_counts"],
+        "object_episode_counts": object_episode_summary["episode_type_counts"],
+        "operator_clause_count": len(clauses),
         "risk_controls": {
             "holding_min_frames": holding_min_frames,
             "merge_gap": merge_gap,

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from vlm_nsm.research.p3_symbolic_induction import (
+    build_object_centric_episodes,
     classify_event,
     infer_plan_skeletons,
+    infer_operator_clauses_v1,
     normalize_demo_rows,
     raw_atoms_from_predicates,
 )
@@ -112,3 +114,39 @@ def test_fuses_release_with_recent_relation_into_place():
 
     assert summary["operator_counts"]["place"] == 1
     assert skeletons[0]["steps"][0]["bindings"] == {"obj": "bowl_1", "target": "plate_1"}
+
+
+def test_builds_object_episode_and_operator_clauses():
+    skeletons = [
+        {
+            "demo_id": "demo_file.hdf5::demo_0",
+            "file": "demo_file.hdf5",
+            "demo": "demo_0",
+            "task": "toy",
+            "steps": [
+                {
+                    "operator": "pick",
+                    "bindings": {"obj": "bowl_1"},
+                    "t_start": 5,
+                    "t_end": 6,
+                    "confidence": "trusted",
+                    "risk_notes": [],
+                },
+                {
+                    "operator": "place",
+                    "bindings": {"obj": "bowl_1", "target": "plate_1"},
+                    "t_start": 15,
+                    "t_end": 16,
+                    "confidence": "trusted",
+                    "risk_notes": [],
+                },
+            ],
+        }
+    ]
+
+    episodes, summary = build_object_centric_episodes(skeletons)
+    clauses, _report = infer_operator_clauses_v1(episodes)
+
+    assert summary["episode_type_counts"]["pick_place"] == 1
+    assert episodes[0]["duration"] == 10
+    assert {clause["name"] for clause in clauses} == {"pick", "place"}
