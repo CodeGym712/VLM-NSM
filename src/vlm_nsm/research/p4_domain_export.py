@@ -83,7 +83,7 @@ def canonical_p4_domain(
                 {"name": "?obj", "type": "object"},
                 {"name": "?container", "type": "container"},
             ],
-            "preconditions_pos": [["holding", "?obj"]],
+            "preconditions_pos": [["holding", "?obj"], ["open", "?container"]],
             "preconditions_neg": [],
             "effects_add": [["handempty"], ["in", "?obj", "?container"]],
             "effects_del": [["holding", "?obj"]],
@@ -92,7 +92,7 @@ def canonical_p4_domain(
             "confidence": "conditional",
             "risk_notes": [
                 "Split from P3 fused place(on-or-in).",
-                "Open-container preconditions are not asserted in v1 because bowl-in-bowl and drawer-in differ.",
+                "P5 initial-state planning exposed that drawer insertion requires open(container).",
             ],
         },
         {

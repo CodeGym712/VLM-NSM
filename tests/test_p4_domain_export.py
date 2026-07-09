@@ -72,6 +72,7 @@ def test_canonical_domain_splits_place_and_includes_push():
     ops = {op["name"]: op for op in domain["operators"]}
     assert ops["place_on"]["support_count"] == 4
     assert ops["place_in"]["support_count"] == 2
+    assert ["open", "?container"] in ops["place_in"]["preconditions_pos"]
     assert ops["push_to_region"]["support_count"] == 1
 
 
