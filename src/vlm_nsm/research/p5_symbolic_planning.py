@@ -32,6 +32,16 @@ from vlm_nsm.research.p4_domain_export import write_text
 State = frozenset[Atom]
 
 
+MOVABLE_NAME_PREFIXES = (
+    "akita_",
+    "cream_cheese",
+    "wine_bottle",
+    "plate",
+    "cookies",
+    "glazed_",
+)
+
+
 @dataclass(frozen=True)
 class GroundAction:
     name: str
@@ -446,6 +456,216 @@ def render_p5_report(summary: Mapping[str, Any], rows: Sequence[Mapping[str, Any
                 "",
                 f"- Task: `{row['task']}`",
                 f"- Status: `{row['status']}`",
+                f"- Plan length: `{row['plan_length']}`",
+                f"- Plan: `{plan}`",
+                "",
+            ]
+        )
+    return "\n".join(lines)
+
+
+def is_likely_movable(name: str) -> bool:
+    return name.startswith(MOVABLE_NAME_PREFIXES)
+
+
+def movable_symbols_in_state(state: Iterable[Atom]) -> set[str]:
+    symbols: set[str] = set()
+    for atom in state:
+        if len(atom) >= 2 and atom[0] in {"holding", "on", "in", "at_region"} and is_likely_movable(atom[1]):
+            symbols.add(atom[1])
+        if len(atom) == 3 and atom[0] == "on" and is_likely_movable(atom[2]):
+            symbols.add(atom[2])
+        if len(atom) == 3 and atom[0] == "in" and is_likely_movable(atom[2]):
+            symbols.add(atom[2])
+    return symbols
+
+
+def required_movable_goal_symbols(goals: Sequence[Mapping[str, Any]]) -> set[str]:
+    required: set[str] = set()
+    for goal in goals:
+        atom = tuple(goal["atom"])
+        if len(atom) >= 2 and atom[0] in {"on", "in", "at_region"} and is_likely_movable(atom[1]):
+            required.add(atom[1])
+        if len(atom) == 3 and atom[0] in {"on", "in"} and is_likely_movable(atom[2]):
+            required.add(atom[2])
+    return required
+
+
+def validate_plan_grounding(plan: Sequence[GroundAction], initial_state: State) -> list[str]:
+    present = movable_symbols_in_state(initial_state)
+    issues: list[str] = []
+    for idx, action in enumerate(plan):
+        bindings = dict(action.bindings)
+        obj = bindings.get("?obj")
+        if action.name in {"pick", "push_to_region", "place_on", "place_in"} and obj and is_likely_movable(obj):
+            if obj not in present:
+                issues.append(f"step_{idx}:{action.name}:absent_object:{obj}")
+        target = bindings.get("?target") or bindings.get("?container")
+        if action.name in {"place_on", "place_in"} and target and is_likely_movable(target):
+            if target not in present:
+                issues.append(f"step_{idx}:{action.name}:absent_target:{target}")
+    return issues
+
+
+def run_p5_composition_audit(
+    p3_dir: Path,
+    p4_dir: Path,
+    package_dir: Path,
+    out_dir: Path,
+    max_depth: int = 4,
+    max_expansions: int = 20000,
+) -> dict[str, Any]:
+    """Cross product initial states with task goals for composition planning.
+
+    This is a transfer/composition audit, not a retraining split.  It asks:
+    given a source demo's initial symbolic state, which other task goals are
+    plausibly plannable with the current typed domain?
+    """
+    domain = read_json(p4_dir / "p4_domain.json")
+    normalized_rows = read_jsonl(p3_dir / "p3_normalized_traces.jsonl")
+    initial_by_demo = group_initial_states(normalized_rows)
+    goals_by_task = goal_specs_from_mapping(package_dir)
+    target_tasks = sorted(goals_by_task)
+
+    rows: list[dict[str, Any]] = []
+    for demo_id, problem in sorted(initial_by_demo.items()):
+        source_task = str(problem["task"])
+        initial_state = problem["state"]
+        present_movable = movable_symbols_in_state(initial_state)
+        for target_task in target_tasks:
+            goals = list(goals_by_task.get(target_task, []))
+            required = required_movable_goal_symbols(goals)
+            category = "same_task" if target_task == source_task else "cross_task"
+            if not required.issubset(present_movable):
+                rows.append(
+                    {
+                        "source_demo_id": demo_id,
+                        "source_task": source_task,
+                        "target_task": target_task,
+                        "category": category,
+                        "status": "skipped_absent_object",
+                        "required_movable": sorted(required),
+                        "present_movable": sorted(present_movable),
+                        "missing_movable": sorted(required - present_movable),
+                        "plan_length": None,
+                        "plan": [],
+                        "reason": "required_movable_not_in_initial_state",
+                    }
+                )
+                continue
+
+            universe = infer_type_universe(initial_state, goals, skeleton_steps=[])
+            actions = ground_actions(domain, universe)
+            plan, stats = bfs_plan(
+                initial_state,
+                goals,
+                actions,
+                max_depth=max_depth,
+                max_expansions=max_expansions,
+            )
+            if plan is None:
+                status = "failed"
+                issues: list[str] = []
+            else:
+                issues = validate_plan_grounding(plan, initial_state)
+                status = "invalid_plan" if issues else "solved"
+            rows.append(
+                {
+                    "source_demo_id": demo_id,
+                    "source_task": source_task,
+                    "target_task": target_task,
+                    "category": category,
+                    "status": status,
+                    "required_movable": sorted(required),
+                    "present_movable": sorted(present_movable),
+                    "missing_movable": [],
+                    "plan_length": len(plan) if plan is not None else None,
+                    "plan": [action.to_dict() for action in plan] if plan is not None else [],
+                    "grounding_issues": issues,
+                    "ground_action_count": len(actions),
+                    "reason": stats["reason"],
+                    "search": stats,
+                }
+            )
+
+    summary = summarize_composition_rows(rows, max_depth=max_depth, max_expansions=max_expansions)
+    write_json(out_dir / "p5_composition_planning_summary.json", summary)
+    write_jsonl(out_dir / "p5_composition_planning_results.jsonl", rows)
+    write_text(out_dir / "p5_composition_planning_report.md", render_composition_report(summary, rows))
+    return summary
+
+
+def summarize_composition_rows(rows: Sequence[Mapping[str, Any]], max_depth: int, max_expansions: int) -> dict[str, Any]:
+    status_counts = Counter(str(row["status"]) for row in rows)
+    category_counts: dict[str, Counter[str]] = defaultdict(Counter)
+    for row in rows:
+        category_counts[str(row["category"])][str(row["status"])] += 1
+    attempted = len(rows) - status_counts.get("skipped_absent_object", 0)
+    solved = status_counts.get("solved", 0)
+    return {
+        "ok": status_counts.get("invalid_plan", 0) == 0,
+        "stage": "P5-B",
+        "problem_count": len(rows),
+        "attempted": attempted,
+        "solved": solved,
+        "failed": status_counts.get("failed", 0),
+        "invalid_plan": status_counts.get("invalid_plan", 0),
+        "skipped_absent_object": status_counts.get("skipped_absent_object", 0),
+        "attempted_solve_rate": solved / attempted if attempted else 0.0,
+        "status_counts": dict(status_counts),
+        "category_status_counts": {category: dict(counts) for category, counts in sorted(category_counts.items())},
+        "max_depth": max_depth,
+        "max_expansions": max_expansions,
+        "status": "P5_COMPOSITION_AUDIT_PASS" if status_counts.get("invalid_plan", 0) == 0 else "P5_COMPOSITION_HAS_INVALID_PLANS",
+        "boundary": "This is a compatibility-filtered cross-task symbolic planning audit, not a held-out retraining experiment.",
+    }
+
+
+def render_composition_report(summary: Mapping[str, Any], rows: Sequence[Mapping[str, Any]]) -> str:
+    lines = [
+        "# P5-B Composition Planning Audit Report",
+        "",
+        f"- Status: `{summary['status']}`",
+        f"- Problems: {summary['problem_count']}",
+        f"- Attempted: {summary['attempted']}",
+        f"- Solved: {summary['solved']}",
+        f"- Failed: {summary['failed']}",
+        f"- Invalid plans: {summary['invalid_plan']}",
+        f"- Skipped absent-object: {summary['skipped_absent_object']}",
+        f"- Attempted solve rate: {summary['attempted_solve_rate']:.3f}",
+        "",
+        "## Category status",
+        "",
+        "| Category | solved | failed | invalid | skipped |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for category, counts in summary["category_status_counts"].items():
+        lines.append(
+            f"| {category} | {counts.get('solved', 0)} | {counts.get('failed', 0)} | "
+            f"{counts.get('invalid_plan', 0)} | {counts.get('skipped_absent_object', 0)} |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Interpretation",
+            "",
+            "This audit crosses each source demo initial state with every known task goal.",
+            "Problems whose required movable objects are absent from the initial state are skipped,",
+            "so the solve rate should be read as a compatibility-filtered symbolic planning score.",
+            "It is not yet a leave-one-task-template-out retraining experiment.",
+            "",
+            "## Example solved cross-task plans",
+            "",
+        ]
+    )
+    examples = [row for row in rows if row["category"] == "cross_task" and row["status"] == "solved"][:8]
+    for row in examples:
+        plan = " -> ".join(str(step["operator"]) for step in row["plan"])
+        lines.extend(
+            [
+                f"### {row['source_demo_id']} -> {row['target_task']}",
+                "",
+                f"- Source task: `{row['source_task']}`",
                 f"- Plan length: `{row['plan_length']}`",
                 f"- Plan: `{plan}`",
                 "",

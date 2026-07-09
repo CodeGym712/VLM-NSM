@@ -10,6 +10,8 @@ from vlm_nsm.research.p5_symbolic_planning import (
     goals_satisfied,
     ground_actions,
     infer_type_universe,
+    required_movable_goal_symbols,
+    run_p5_composition_audit,
     run_p5_planning_audit,
 )
 
@@ -99,7 +101,7 @@ def test_run_p5_planning_audit_on_toy_artifacts(tmp_path):
                 "task": "toy_place",
                 "t": 0,
                 "T": 2,
-                "trusted_predicates": [["handempty"], ["on", "bowl_1", "table"]],
+                "trusted_predicates": [["handempty"], ["on", "akita_black_bowl_1", "table"], ["on", "plate_1", "table"]],
             }
         ],
     )
@@ -125,7 +127,7 @@ def test_run_p5_planning_audit_on_toy_artifacts(tmp_path):
                         {
                             "internal_predicate": "on",
                             "bddl_predicate": "On",
-                            "bddl_args": ["bowl_1", "plate_1"],
+                            "bddl_args": ["akita_black_bowl_1", "plate_1"],
                             "grounded_args": [{}, {}],
                         }
                     ]
@@ -139,3 +141,64 @@ def test_run_p5_planning_audit_on_toy_artifacts(tmp_path):
     assert summary["status"] == "P5_INITIAL_PLANNING_PASS"
     assert summary["solved"] == 1
     assert (out_dir / "p5_initial_planning_results.jsonl").exists()
+
+
+def test_required_movable_goal_symbols_detects_object_and_movable_target():
+    goals = [{"atom": ("on", "cream_cheese_1", "akita_black_bowl_1"), "arg_aliases": []}]
+
+    assert required_movable_goal_symbols(goals) == {"cream_cheese_1", "akita_black_bowl_1"}
+
+
+def test_run_p5_composition_audit_skips_absent_objects(tmp_path):
+    p3_dir = tmp_path / "p3"
+    p4_dir = tmp_path / "p4"
+    package_dir = tmp_path / "package"
+    out_dir = tmp_path / "out"
+
+    _write_jsonl(
+        p3_dir / "p3_normalized_traces.jsonl",
+        [
+            {
+                "file": "toy.hdf5",
+                "demo": "demo_0",
+                "task": "toy_place",
+                "t": 0,
+                "T": 2,
+                "trusted_predicates": [["handempty"], ["on", "akita_black_bowl_1", "table"], ["on", "plate_1", "table"]],
+            }
+        ],
+    )
+    _write_json(p4_dir / "p4_domain.json", _toy_domain())
+    _write_json(
+        package_dir / "metadata" / "bddl_task_mapping.json",
+        {
+            "mappings": {
+                "toy_place": {
+                    "goals": [
+                        {
+                            "internal_predicate": "on",
+                            "bddl_predicate": "On",
+                            "bddl_args": ["akita_black_bowl_1", "plate_1"],
+                            "grounded_args": [{}, {}],
+                        }
+                    ]
+                },
+                "toy_absent": {
+                    "goals": [
+                        {
+                            "internal_predicate": "on",
+                            "bddl_predicate": "On",
+                            "bddl_args": ["wine_bottle_1", "plate_1"],
+                            "grounded_args": [{}, {}],
+                        }
+                    ]
+                },
+            }
+        },
+    )
+
+    summary = run_p5_composition_audit(p3_dir, p4_dir, package_dir, out_dir, max_depth=3)
+
+    assert summary["attempted"] == 1
+    assert summary["solved"] == 1
+    assert summary["skipped_absent_object"] == 1
