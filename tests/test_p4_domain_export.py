@@ -24,6 +24,7 @@ def _write_jsonl(path, rows):
 def test_place_step_is_split_by_relation():
     assert operator_name_for_step({"operator": "place", "bindings": {"relation": "on"}}) == "place_on"
     assert operator_name_for_step({"operator": "place", "bindings": {"relation": "in"}}) == "place_in"
+    assert operator_name_for_step({"operator": "place", "bindings": {"relation": "on"}}, split_place=False) == "place"
     assert operator_name_for_step({"operator": "open", "bindings": {}}) == "open"
 
 
@@ -155,5 +156,7 @@ def test_run_p4_pipeline_on_toy_artifacts(tmp_path):
 
     assert summary["status"] == "P4_PASS"
     assert summary["covered"] == 2
+    assert summary["ablation_interpretation"]["server_at_region_patch_gain"] == 1
     assert (out_dir / "p4_domain.json").exists()
     assert (out_dir / "p4_domain.pddl").exists()
+    assert (out_dir / "p4_ablation_summary.json").exists()

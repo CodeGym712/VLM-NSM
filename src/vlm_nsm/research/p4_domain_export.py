@@ -40,6 +40,7 @@ def _as_atom_list(rows: Sequence[Sequence[str]]) -> list[list[str]]:
 def canonical_p4_domain(
     p3_clauses: Sequence[Mapping[str, Any]],
     push_candidate: Mapping[str, Any] | None = None,
+    split_place: bool = True,
 ) -> dict[str, Any]:
     """Build a typed P4 domain from P3 clauses plus optional server push evidence."""
     support_by_name = {str(clause.get("name")): dict(clause) for clause in p3_clauses}
@@ -135,9 +136,32 @@ def canonical_p4_domain(
         },
     ]
 
+    if not split_place:
+        fused_place = {
+            "name": "place",
+            "parameters": [
+                {"name": "?obj", "type": "object"},
+                {"name": "?target", "type": "support"},
+            ],
+            "preconditions_pos": [["holding", "?obj"]],
+            "preconditions_neg": [],
+            "effects_add": [["handempty"], ["on-or-in", "?obj", "?target"]],
+            "effects_del": [["holding", "?obj"]],
+            "source_operator": "place",
+            "support_count": int(support_by_name.get("place", {}).get("support_count", 0)),
+            "confidence": "baseline_fused",
+            "risk_notes": [
+                "Fused baseline keeps P3 place(on-or-in) semantics.",
+                "This is useful for replay comparison but less PDDL-clean than place_on/place_in.",
+            ],
+        }
+        operators = [op for op in operators if op["name"] not in {"place_on", "place_in"}]
+        operators.insert(1, fused_place)
+
     return {
         "version": "p4_domain_v1",
-        "name": "libero_induced_typed_domain_v1",
+        "name": "libero_induced_typed_domain_v1" if split_place else "libero_induced_fused_place_domain_v1",
+        "mode": "typed_split_place" if split_place else "fused_place_baseline",
         "source": {
             "p3_operator_clauses": "p3_operator_clauses_v2.json",
             "server_push_candidate": "p3_push_operator_candidate.json",
@@ -169,12 +193,23 @@ def canonical_p4_domain(
                 "name": "at_region",
                 "parameters": [{"name": "?obj", "type": "object"}, {"name": "?region", "type": "region"}],
             },
-        ],
+        ]
+        + (
+            []
+            if split_place
+            else [
+                {
+                    "name": "on-or-in",
+                    "parameters": [{"name": "?obj", "type": "object"}, {"name": "?target", "type": "support"}],
+                }
+            ]
+        ),
         "operators": operators,
         "boundary_notes": [
             "This is a typed symbolic planning domain export, not an end-to-end VLA policy.",
             "P4 v1 validates goal replay consistency, not physical execution success.",
             "place_on/place_in split the P3 fused place relation for PDDL compatibility.",
+            "The fused_place_baseline mode is for ablation and should not be used as the final PDDL domain.",
         ],
     }
 
@@ -218,10 +253,12 @@ def render_pddl_like_domain(domain: Mapping[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def operator_name_for_step(step: Mapping[str, Any]) -> str:
+def operator_name_for_step(step: Mapping[str, Any], split_place: bool = True) -> str:
     op = str(step.get("operator"))
     if op != "place":
         return op
+    if not split_place:
+        return "place"
     relation = str((step.get("bindings") or {}).get("relation", "on-or-in"))
     if relation == "in":
         return "place_in"
@@ -230,9 +267,9 @@ def operator_name_for_step(step: Mapping[str, Any]) -> str:
     return "place_on_or_in_unresolved"
 
 
-def normalize_step_for_domain(step: Mapping[str, Any]) -> dict[str, Any]:
+def normalize_step_for_domain(step: Mapping[str, Any], split_place: bool = True) -> dict[str, Any]:
     normalized = dict(step)
-    normalized["p4_operator"] = operator_name_for_step(step)
+    normalized["p4_operator"] = operator_name_for_step(step, split_place=split_place)
     return normalized
 
 
@@ -271,8 +308,8 @@ def merge_server_push_steps(
     return patched
 
 
-def step_satisfies_goal_p4(step: Mapping[str, Any], goal: Mapping[str, Any]) -> bool:
-    op = operator_name_for_step(step)
+def step_satisfies_goal_p4(step: Mapping[str, Any], goal: Mapping[str, Any], split_place: bool = True) -> bool:
+    op = operator_name_for_step(step, split_place=split_place)
     bindings = dict(step.get("bindings") or {})
     atom = tuple(goal["atom"])
     aliases = goal.get("arg_aliases") or []
@@ -284,6 +321,8 @@ def step_satisfies_goal_p4(step: Mapping[str, Any], goal: Mapping[str, Any]) -> 
     if pred == "on" and op in {"place_on", "place_on_or_in_unresolved"}:
         return _binary_binding_matches_goal(bindings, "target", atom, aliases)
     if pred == "in" and op == "place_in":
+        return _binary_binding_matches_goal(bindings, "target", atom, aliases)
+    if pred in {"on", "in"} and op == "place":
         return _binary_binding_matches_goal(bindings, "target", atom, aliases)
     if pred == "at_region" and op == "push_to_region":
         return _binary_binding_matches_goal(bindings, "region", atom, aliases)
@@ -307,19 +346,20 @@ def replay_p4_domain(
     skeletons: Sequence[Mapping[str, Any]],
     goals_by_task: Mapping[str, Sequence[Mapping[str, Any]]],
     domain: Mapping[str, Any],
+    split_place: bool = True,
 ) -> dict[str, Any]:
     operator_names = {str(op["name"]) for op in domain["operators"]}
     rows: list[dict[str, Any]] = []
     for skeleton in skeletons:
         task = str(skeleton.get("task", ""))
         goals = list(goals_by_task.get(task, []))
-        steps = [normalize_step_for_domain(step) for step in skeleton.get("steps", [])]
+        steps = [normalize_step_for_domain(step, split_place=split_place) for step in skeleton.get("steps", [])]
         invalid_steps = [step for step in steps if step["p4_operator"] not in operator_names]
         matched: list[Atom] = []
         missing: list[Atom] = []
         for goal in goals:
             atom = tuple(goal["atom"])
-            if any(step_satisfies_goal_p4(step, goal) for step in steps):
+            if any(step_satisfies_goal_p4(step, goal, split_place=split_place) for step in steps):
                 matched.append(atom)
             else:
                 missing.append(atom)
@@ -407,6 +447,160 @@ def render_replay_report(replay: Mapping[str, Any], domain: Mapping[str, Any]) -
     return "\n".join(lines)
 
 
+def summarize_replay_variant(name: str, replay: Mapping[str, Any], notes: Sequence[str]) -> dict[str, Any]:
+    summary = dict(replay["summary"])
+    demo_count = int(summary.get("demo_count", 0))
+    covered = int(summary.get("covered", 0))
+    return {
+        "name": name,
+        "demo_count": demo_count,
+        "covered": covered,
+        "coverage": covered / demo_count if demo_count else 0.0,
+        "failed": int(summary.get("failed", 0)),
+        "invalid_plan": int(summary.get("invalid_plan", 0)),
+        "no_goal_mapping": int(summary.get("no_goal_mapping", 0)),
+        "operator_counts": summary.get("operator_counts", {}),
+        "status_counts": summary.get("status_counts", {}),
+        "notes": list(notes),
+    }
+
+
+def run_p4_ablation_suite(
+    p3_dir: Path,
+    p3_clauses: Sequence[Mapping[str, Any]],
+    goals_by_task: Mapping[str, Sequence[Mapping[str, Any]]],
+    push_candidate: Mapping[str, Any] | None,
+    at_region_eval: Mapping[str, Any] | None,
+) -> tuple[dict[str, Any], str]:
+    """Run lightweight P4 ablations over existing symbolic artifacts."""
+    repaired_skeletons = read_jsonl(p3_dir / "p3_plan_skeletons_v2.jsonl")
+    local_skeletons_path = p3_dir / "p3_plan_skeletons.jsonl"
+    local_skeletons = read_jsonl(local_skeletons_path) if local_skeletons_path.exists() else repaired_skeletons
+
+    typed_domain = canonical_p4_domain(p3_clauses, push_candidate, split_place=True)
+    fused_domain = canonical_p4_domain(p3_clauses, push_candidate, split_place=False)
+
+    variants: list[dict[str, Any]] = []
+
+    full_replay = replay_p4_domain(
+        merge_server_push_steps(repaired_skeletons, at_region_eval),
+        goals_by_task,
+        typed_domain,
+        split_place=True,
+    )
+    variants.append(
+        summarize_replay_variant(
+            "full_typed_split",
+            full_replay,
+            ["P3 v2 repaired skeletons", "server at_region patch", "place split into place_on/place_in"],
+        )
+    )
+
+    no_push_replay = replay_p4_domain(repaired_skeletons, goals_by_task, typed_domain, split_place=True)
+    variants.append(
+        summarize_replay_variant(
+            "no_push_patch",
+            no_push_replay,
+            ["P3 v2 repaired skeletons", "server at_region patch disabled"],
+        )
+    )
+
+    no_goal_repair_replay = replay_p4_domain(
+        merge_server_push_steps(local_skeletons, at_region_eval),
+        goals_by_task,
+        typed_domain,
+        split_place=True,
+    )
+    variants.append(
+        summarize_replay_variant(
+            "no_goal_repair",
+            no_goal_repair_replay,
+            ["P3 v1 local skeletons", "server at_region patch enabled", "final-state goal repair disabled"],
+        )
+    )
+
+    local_only_replay = replay_p4_domain(local_skeletons, goals_by_task, typed_domain, split_place=True)
+    variants.append(
+        summarize_replay_variant(
+            "local_only_effect",
+            local_only_replay,
+            ["P3 v1 local skeletons", "server at_region patch disabled", "final-state goal repair disabled"],
+        )
+    )
+
+    fused_place_replay = replay_p4_domain(
+        merge_server_push_steps(repaired_skeletons, at_region_eval),
+        goals_by_task,
+        fused_domain,
+        split_place=False,
+    )
+    variants.append(
+        summarize_replay_variant(
+            "fused_place_full",
+            fused_place_replay,
+            ["P3 v2 repaired skeletons", "server at_region patch", "place remains fused as place(on-or-in)"],
+        )
+    )
+
+    full_covered = variants[0]["covered"] if variants else 0
+    for variant in variants:
+        variant["delta_covered_vs_full"] = int(variant["covered"]) - int(full_covered)
+
+    report = {
+        "stage": "P4-B",
+        "variant_count": len(variants),
+        "full_variant": "full_typed_split",
+        "variants": variants,
+        "interpretation": {
+            "server_at_region_patch_gain": int(variants[0]["covered"]) - int(variants[1]["covered"]),
+            "goal_repair_gain": int(variants[0]["covered"]) - int(variants[2]["covered"]),
+            "local_to_full_gain": int(variants[0]["covered"]) - int(variants[3]["covered"]),
+            "typed_split_coverage_delta": int(variants[0]["covered"]) - int(variants[4]["covered"]),
+            "typed_split_note": (
+                "Coverage can match fused_place_full, but split place_on/place_in is the PDDL-clean representation "
+                "used for the final domain."
+            ),
+        },
+    }
+    return report, render_ablation_report(report)
+
+
+def render_ablation_report(report: Mapping[str, Any]) -> str:
+    variants = list(report["variants"])
+    lines = [
+        "# P4-B Baseline and Ablation Report",
+        "",
+        f"- Variant count: {report['variant_count']}",
+        f"- Full variant: `{report['full_variant']}`",
+        "",
+        "## Summary",
+        "",
+        "| Variant | Covered | Failed | Invalid | Delta vs full | Notes |",
+        "|---|---:|---:|---:|---:|---|",
+    ]
+    for item in variants:
+        notes = "; ".join(item.get("notes", []))
+        lines.append(
+            f"| {item['name']} | {item['covered']}/{item['demo_count']} | {item['failed']} | "
+            f"{item['invalid_plan']} | {item['delta_covered_vs_full']} | {notes} |"
+        )
+    interp = report["interpretation"]
+    lines.extend(
+        [
+            "",
+            "## Interpretation",
+            "",
+            f"- Server at_region patch gain: {interp['server_at_region_patch_gain']} demos.",
+            f"- Goal-repair gain: {interp['goal_repair_gain']} demos.",
+            f"- Local-only to full gain: {interp['local_to_full_gain']} demos.",
+            f"- Typed split coverage delta vs fused place: {interp['typed_split_coverage_delta']} demos.",
+            f"- Typed split note: {interp['typed_split_note']}",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def run_p4_pipeline(
     p3_dir: Path,
     package_dir: Path,
@@ -427,12 +621,21 @@ def run_p4_pipeline(
     patched_skeletons = merge_server_push_steps(skeletons, at_region_eval)
     goals_by_task = goal_specs_from_mapping(package_dir)
     replay = replay_p4_domain(patched_skeletons, goals_by_task, domain)
+    ablations, ablation_md = run_p4_ablation_suite(
+        p3_dir=p3_dir,
+        p3_clauses=p3_clauses,
+        goals_by_task=goals_by_task,
+        push_candidate=push_candidate,
+        at_region_eval=at_region_eval,
+    )
 
     write_json(out_dir / "p4_domain.json", domain)
     write_text(out_dir / "p4_domain.pddl", render_pddl_like_domain(domain))
     write_jsonl(out_dir / "p4_plan_skeletons.jsonl", patched_skeletons)
     write_json(out_dir / "p4_domain_replay_eval.json", replay)
     write_text(out_dir / "p4_domain_replay_report.md", render_replay_report(replay, domain))
+    write_json(out_dir / "p4_ablation_summary.json", ablations)
+    write_text(out_dir / "p4_ablation_report.md", ablation_md)
     summary = {
         "ok": replay["summary"]["covered"] == replay["summary"]["demo_count"],
         "stage": "P4",
@@ -446,6 +649,7 @@ def run_p4_pipeline(
         "failed": replay["summary"]["failed"],
         "invalid_plan": replay["summary"]["invalid_plan"],
         "operator_counts": replay["summary"]["operator_counts"],
+        "ablation_interpretation": ablations["interpretation"],
         "status": "P4_PASS" if replay["summary"]["covered"] == replay["summary"]["demo_count"] else "P4_NEEDS_REPAIR",
     }
     write_json(out_dir / "p4_pipeline_summary.json", summary)
