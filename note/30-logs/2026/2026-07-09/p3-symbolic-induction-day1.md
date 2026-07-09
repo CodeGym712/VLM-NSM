@@ -280,3 +280,93 @@ P3 已从“事件抽取”推进到“operator clause v1”。但 v1 仍不是�
 2. `place` target 绑定需要 goal-aware 校验；
 3. `push` 类任务仍被 `at_region` 排除；
 4. 下一步应做 counterexample-driven replay，检查 operator clause 是否能解释每个 task goal。
+
+---
+
+## 十、追加进展：P3-T7 Goal Replay 与反例驱动修订
+
+### T7：Goal-level replay
+
+新增目标级 replay：
+
+```text
+BDDL goal atoms
+P3 fused skeleton steps
+→ covered / failed / blocked
+```
+
+新增产物：
+
+```text
+p3_goal_replay_eval.json
+p3_goal_counterexamples.jsonl
+p3_goal_replay_report.md
+p3_counterexample_revision_plan.json
+p3_counterexample_revision_plan.md
+```
+
+### 目标别名处理
+
+为避免把“命名差异”误判为 operator 失败，T7 加入 BDDL goal aliases：
+
+- `wooden_cabinet_1_top_region` → `wooden_cabinet_1_top_level`
+- fixture goal 可匹配 `sim_body` / `sim_joint` / 去 `_main` 后别名
+- `flat_stove_1_cook_region` 可匹配 `flat_stove_1_main` / `flat_stove_1_burner_plate`
+- `wine_rack_1_top_region` 可匹配 `wine_rack_1_main`
+
+### T7 结果
+
+```text
+Demo count: 60
+Covered: 31
+Failed: 26
+Blocked by excluded predicate: 3
+```
+
+被阻断的 3 条全部来自：
+
+```text
+push_the_plate_to_the_front_of_the_stove
+```
+
+原因是目标依赖 `at_region`，而当前 P3 风险控制明确排除 `at_region`。
+
+### 反例分布
+
+```text
+no_skeleton_steps: 15
+missing_place_step: 9
+place_target_or_relation_mismatch: 2
+goal_depends_on_at_region_excluded_from_P3: 3
+```
+
+### 修订计划
+
+| Reason | Count | Next action |
+|---|---:|---|
+| `no_skeleton_steps` | 15 | 检查 predicate windows；可能是 holding/on 被 mask，或对象类型不止 bowl |
+| `missing_place_step` | 9 | 加强 release-target fusion；允许最终 goal relation 辅助补 target |
+| `place_target_or_relation_mismatch` | 2 | 多个目标关系出现时，优先选择 BDDL goal-compatible target |
+| `goal_depends_on_at_region_excluded_from_P3` | 3 | 服务器端验证 replacement at_region 后再打开 push 任务 |
+
+### 新验证
+
+```text
+tests/test_p3_symbolic_induction.py
+10 passed
+```
+
+### 当前判断
+
+P3-T7 已经把“当前 operator clauses 能解释哪些任务目标”量化出来。当前瓶颈不是 `open/turn_on`，而是：
+
+1. 搬运类任务中 pick/place skeleton 召回不足；
+2. place target 需要 goal-aware adjudication；
+3. `at_region` 缺失导致 push 任务被策略性阻断；
+4. 一些非 bowl 任务（cream cheese / wine bottle）在当前 object-centric binding 中召回很低。
+
+下一步应进入 P3-T8：
+
+```text
+goal-aware target binding + multi-object skeleton recall repair
+```

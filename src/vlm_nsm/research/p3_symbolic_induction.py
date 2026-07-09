@@ -406,12 +406,15 @@ def classify_event(event: Mapping[str, Any]) -> tuple[str, dict[str, str], list[
     if deleted_holding and ("handempty",) in added:
         obj = deleted_holding[0][1]
         target = ""
+        relation = ""
         if added_on:
             target = added_on[0][2]
+            relation = "on"
         elif added_in:
             target = added_in[0][2]
+            relation = "in"
         if target:
-            return "place", {"obj": obj, "target": target}, risk_notes
+            return "place", {"obj": obj, "target": target, "relation": relation}, risk_notes
         return "release", {"obj": obj}, risk_notes + ["release_without_target_effect"]
     if added_open:
         return "open", {"drawer": added_open[0][1]}, risk_notes
@@ -419,7 +422,7 @@ def classify_event(event: Mapping[str, Any]) -> tuple[str, dict[str, str], list[
         return "turn_on", {"device": added_activated[0][1]}, risk_notes
     if added_on or added_in:
         atom = (added_on or added_in)[0]
-        return "relocate_effect", {"obj": atom[1], "target": atom[2]}, risk_notes
+        return "relocate_effect", {"obj": atom[1], "target": atom[2], "relation": atom[0]}, risk_notes
     return "unclassified", {}, risk_notes
 
 
@@ -576,7 +579,7 @@ def infer_plan_skeletons(
     skeletons: list[dict[str, Any]] = []
     for demo_id in sorted(set(demo_index) | set(by_demo)):
         events = sorted(by_demo.get(demo_id, []), key=lambda item: (int(item["t_start"]), int(item["t_end"])))
-        recent_relation: dict[str, tuple[str, int, str]] = {}
+        recent_relation: dict[str, tuple[str, str, int, str]] = {}
         steps: list[dict[str, Any]] = []
         unresolved: list[dict[str, Any]] = []
 
@@ -589,19 +592,23 @@ def infer_plan_skeletons(
             if op == "relocate_effect":
                 obj = bindings.get("obj")
                 target = bindings.get("target")
+                relation = bindings.get("relation", "on-or-in")
                 if obj and target:
-                    recent_relation[obj] = (target, t_start, event.get("confidence", "trusted"))
+                    recent_relation[obj] = (target, relation, t_start, event.get("confidence", "trusted"))
                 continue
 
             if op == "release":
                 obj = bindings.get("obj")
                 relation = recent_relation.get(obj or "")
-                if obj and relation and 0 <= t_start - relation[1] <= relation_lookback:
-                    target, relation_t, confidence = relation
+                if obj and relation and 0 <= t_start - relation[2] <= relation_lookback:
+                    # Backward compatibility guard for old tuple shape is not
+                    # needed for freshly generated artifacts, but keeping this
+                    # unpack explicit makes the semantics visible.
+                    target, relation_pred, relation_t, confidence = relation
                     steps.append(
                         {
                             "operator": "place",
-                            "bindings": {"obj": obj, "target": target},
+                            "bindings": {"obj": obj, "target": target, "relation": relation_pred},
                             "t_start": t_start,
                             "t_end": int(event["t_end"]),
                             "source": "release_fused_with_recent_relation",
@@ -682,6 +689,7 @@ def build_object_centric_episodes(
             if op == "place":
                 obj = bindings.get("obj")
                 target = bindings.get("target")
+                relation = bindings.get("relation", "on-or-in")
                 pick_step = active_pick.pop(obj, None) if obj else None
                 episodes.append(
                     {
@@ -692,6 +700,7 @@ def build_object_centric_episodes(
                         "task": skeleton["task"],
                         "obj": obj,
                         "target": target,
+                        "relation": relation,
                         "pick_t": pick_step.get("t_start") if pick_step else None,
                         "place_t": step.get("t_start"),
                         "duration": (int(step["t_start"]) - int(pick_step["t_start"])) if pick_step else None,
@@ -793,6 +802,7 @@ def infer_operator_clauses_v1(episodes: Sequence[Mapping[str, Any]]) -> tuple[li
     if by_type.get("pick_place") or by_type.get("place_without_pick"):
         place_support = by_type.get("pick_place", []) + by_type.get("place_without_pick", [])
         target_counts = Counter(str(item.get("target")) for item in place_support)
+        relation_counts = Counter(str(item.get("relation", "on-or-in")) for item in place_support)
         clauses.append(
             {
                 "name": "place",
@@ -803,6 +813,7 @@ def infer_operator_clauses_v1(episodes: Sequence[Mapping[str, Any]]) -> tuple[li
                 "effects_del": [["holding", "?obj"]],
                 "support_count": len(place_support),
                 "target_counts": dict(target_counts),
+                "relation_counts": dict(relation_counts),
                 "confidence": "conditional",
                 "risk_notes": [
                     "Target relation may appear before release; v1 uses fused skeleton evidence.",
@@ -879,10 +890,336 @@ def _episode_ref(item: Mapping[str, Any]) -> dict[str, Any]:
         "task": item.get("task"),
         "obj": item.get("obj"),
         "target": item.get("target"),
+        "relation": item.get("relation"),
         "pick_t": item.get("pick_t"),
         "place_t": item.get("place_t"),
         "t": item.get("t"),
     }
+
+
+def canonical_goal_arg(name: str, predicate: str) -> str:
+    """Normalize BDDL goal arguments into P3 predicate atom names."""
+    value = canonical_entity(name)
+    if predicate in {"open", "in"} and value.startswith("wooden_cabinet_1_") and value.endswith("_region"):
+        return value[: -len("_region")] + "_level"
+    return value
+
+
+def _goal_arg_aliases(goal_arg: str, grounded: Mapping[str, Any] | None, predicate: str) -> list[str]:
+    aliases = {canonical_goal_arg(goal_arg, predicate)}
+    if grounded:
+        for key in ("bddl_name", "sim_joint", "sim_site", "sim_body"):
+            value = grounded.get(key)
+            if value:
+                aliases.add(canonical_goal_arg(canonical_entity(str(value)), predicate))
+        sim_body = grounded.get("sim_body")
+        if sim_body and str(sim_body).endswith("_main"):
+            aliases.add(str(sim_body)[: -len("_main")])
+    if goal_arg.endswith("_top_region"):
+        aliases.add(goal_arg[: -len("_top_region")] + "_main")
+    if goal_arg.endswith("_cook_region"):
+        aliases.add(goal_arg)
+        aliases.add(goal_arg[: -len("_cook_region")] + "_main")
+        aliases.add(goal_arg[: -len("_cook_region")] + "_burner_plate")
+    if goal_arg.endswith("_top_side"):
+        aliases.add(goal_arg[: -len("_top_side")] + "_top_level")
+    return sorted(aliases)
+
+
+def goal_specs_from_mapping(package_dir: Path) -> dict[str, list[dict[str, Any]]]:
+    mapping = read_json(package_dir / "metadata" / "bddl_task_mapping.json")["mappings"]
+    goals_by_task: dict[str, list[dict[str, Any]]] = {}
+    for task, info in mapping.items():
+        goals: list[dict[str, Any]] = []
+        for goal in info.get("goals", []):
+            pred = str(goal.get("internal_predicate"))
+            bddl_args = [str(arg) for arg in goal.get("bddl_args", [])]
+            grounded_args = list(goal.get("grounded_args", []))
+            arg_aliases = [
+                _goal_arg_aliases(arg, grounded_args[idx] if idx < len(grounded_args) else None, pred)
+                for idx, arg in enumerate(bddl_args)
+            ]
+            if pred == "on":
+                atom = ("on", canonical_goal_arg(bddl_args[0], pred), canonical_goal_arg(bddl_args[1], pred))
+            elif pred == "in":
+                atom = ("in", canonical_goal_arg(bddl_args[0], pred), canonical_goal_arg(bddl_args[1], pred))
+            elif pred == "open":
+                atom = ("open", canonical_goal_arg(bddl_args[0], pred))
+            elif pred == "activated":
+                atom = ("activated", canonical_goal_arg(bddl_args[0], pred))
+            elif pred == "at_region":
+                atom = ("at_region", canonical_goal_arg(bddl_args[0], pred), canonical_goal_arg(bddl_args[1], pred))
+            else:
+                atom = tuple([pred, *[canonical_goal_arg(arg, pred) for arg in bddl_args]])
+            goals.append(
+                {
+                    "atom": atom,
+                    "arg_aliases": arg_aliases,
+                    "bddl_predicate": goal.get("bddl_predicate"),
+                    "bddl_args": bddl_args,
+                    "internal_predicate": pred,
+                }
+            )
+        goals_by_task[task] = goals
+    return goals_by_task
+
+
+def goal_atoms_from_mapping(package_dir: Path) -> dict[str, list[Atom]]:
+    return {
+        task: [tuple(spec["atom"]) for spec in specs]
+        for task, specs in goal_specs_from_mapping(package_dir).items()
+    }
+
+
+def step_satisfies_goal(step: Mapping[str, Any], goal: Atom | Mapping[str, Any]) -> bool:
+    op = str(step.get("operator"))
+    bindings = dict(step.get("bindings") or {})
+    if isinstance(goal, Mapping):
+        aliases = goal.get("arg_aliases") or []
+        goal_atom = tuple(goal["atom"])
+    else:
+        aliases = []
+        goal_atom = goal
+    goal = goal_atom
+    pred = goal[0]
+
+    if pred == "open" and op == "open":
+        return _value_matches_aliases(bindings.get("drawer"), aliases[0] if aliases else [goal[1]])
+    if pred == "activated" and op == "turn_on":
+        device = str(bindings.get("device", ""))
+        candidates = aliases[0] if aliases else [goal[1]]
+        return any(device == item or device.startswith(item) or item.startswith(device) for item in candidates)
+    if pred in {"on", "in"} and op == "place":
+        relation = bindings.get("relation", "on-or-in")
+        obj_aliases = aliases[0] if aliases else [goal[1]]
+        target_aliases = aliases[1] if len(aliases) > 1 else [goal[2]]
+        return (
+            _value_matches_aliases(bindings.get("obj"), obj_aliases)
+            and _value_matches_aliases(bindings.get("target"), target_aliases)
+            and (relation == pred or relation == "on-or-in")
+        )
+    return False
+
+
+def _value_matches_aliases(value: Any, aliases: Sequence[str]) -> bool:
+    if value is None:
+        return False
+    value_s = str(value)
+    return any(value_s == alias or value_s.startswith(alias) or alias.startswith(value_s) for alias in aliases)
+
+
+def replay_goals_against_skeletons(
+    skeletons: Sequence[Mapping[str, Any]],
+    goals_by_task: Mapping[str, Sequence[Atom | Mapping[str, Any]]],
+) -> tuple[dict[str, Any], list[dict[str, Any]], str]:
+    """Audit whether fused P3 skeletons can explain each task goal."""
+    rows: list[dict[str, Any]] = []
+    counterexamples: list[dict[str, Any]] = []
+
+    for skeleton in skeletons:
+        task = str(skeleton.get("task", ""))
+        goals = list(goals_by_task.get(task, []))
+        steps = list(skeleton.get("steps", []))
+        matched: list[Atom] = []
+        missing: list[Atom] = []
+
+        goal_atoms = [tuple(goal["atom"]) if isinstance(goal, Mapping) else tuple(goal) for goal in goals]
+
+        if any(goal[0] == "at_region" for goal in goal_atoms):
+            status = "blocked_excluded_predicate"
+            reason = "goal_depends_on_at_region_excluded_from_P3"
+            missing = goal_atoms
+        else:
+            for goal in goals:
+                atom = tuple(goal["atom"]) if isinstance(goal, Mapping) else tuple(goal)
+                if any(step_satisfies_goal(step, goal) for step in steps):
+                    matched.append(atom)
+                else:
+                    missing.append(atom)
+            if not goals:
+                status = "no_goal_mapping"
+                reason = "missing_bddl_goal_mapping"
+            elif not steps:
+                status = "failed"
+                reason = "no_skeleton_steps"
+            elif not missing:
+                status = "covered"
+                reason = "all_goals_matched_by_skeleton"
+            else:
+                status = "failed"
+                reason = infer_goal_failure_reason(steps, missing)
+
+        row = {
+            "demo_id": skeleton.get("demo_id"),
+            "file": skeleton.get("file"),
+            "demo": skeleton.get("demo"),
+            "task": task,
+            "goals": [atom_to_list(goal) for goal in goal_atoms],
+            "goal_specs": [
+                {
+                    "atom": atom_to_list(tuple(goal["atom"])),
+                    "arg_aliases": goal.get("arg_aliases", []),
+                }
+                for goal in goals
+                if isinstance(goal, Mapping)
+            ],
+            "matched_goals": [atom_to_list(goal) for goal in matched],
+            "missing_goals": [atom_to_list(goal) for goal in missing],
+            "operator_sequence": list(skeleton.get("operator_sequence", [])),
+            "status": status,
+            "reason": reason,
+        }
+        rows.append(row)
+        if status != "covered":
+            counterexamples.append(row)
+
+    status_counts = Counter(row["status"] for row in rows)
+    reason_counts = Counter(row["reason"] for row in rows if row["status"] != "covered")
+    per_task: dict[str, Counter] = defaultdict(Counter)
+    for row in rows:
+        per_task[str(row["task"])][str(row["status"])] += 1
+    report = {
+        "demo_count": len(rows),
+        "covered": status_counts.get("covered", 0),
+        "failed": status_counts.get("failed", 0),
+        "blocked_excluded_predicate": status_counts.get("blocked_excluded_predicate", 0),
+        "no_goal_mapping": status_counts.get("no_goal_mapping", 0),
+        "status_counts": dict(status_counts),
+        "reason_counts": dict(reason_counts),
+        "per_task": {task: dict(counts) for task, counts in sorted(per_task.items())},
+    }
+    markdown = render_goal_replay_report(report, counterexamples)
+    return {"summary": report, "demos": rows}, counterexamples, markdown
+
+
+def infer_goal_failure_reason(steps: Sequence[Mapping[str, Any]], missing: Sequence[Atom]) -> str:
+    operators = [str(step.get("operator")) for step in steps]
+    if any(goal[0] in {"on", "in"} for goal in missing):
+        if "place" not in operators:
+            return "missing_place_step"
+        return "place_target_or_relation_mismatch"
+    if any(goal[0] == "open" for goal in missing):
+        return "missing_open_step"
+    if any(goal[0] == "activated" for goal in missing):
+        return "missing_turn_on_step"
+    return "missing_goal_effect"
+
+
+def render_goal_replay_report(report: Mapping[str, Any], counterexamples: Sequence[Mapping[str, Any]]) -> str:
+    lines = [
+        "# P3 Goal Replay and Counterexample Report",
+        "",
+        f"- Demo count: {report['demo_count']}",
+        f"- Covered: {report['covered']}",
+        f"- Failed: {report['failed']}",
+        f"- Blocked by excluded predicate: {report['blocked_excluded_predicate']}",
+        f"- Status counts: `{report['status_counts']}`",
+        f"- Reason counts: `{report['reason_counts']}`",
+        "",
+        "## Per-task status",
+        "",
+        "| Task | covered | failed | blocked |",
+        "|---|---:|---:|---:|",
+    ]
+    for task, counts in report["per_task"].items():
+        lines.append(
+            f"| {task} | {counts.get('covered', 0)} | {counts.get('failed', 0)} | {counts.get('blocked_excluded_predicate', 0)} |"
+        )
+    lines.extend(["", "## Counterexamples", ""])
+    for row in counterexamples[:40]:
+        lines.extend(
+            [
+                f"### {row['demo_id']}",
+                "",
+                f"- Task: `{row['task']}`",
+                f"- Status: `{row['status']}`",
+                f"- Reason: `{row['reason']}`",
+                f"- Goals: `{row['goals']}`",
+                f"- Missing: `{row['missing_goals']}`",
+                f"- Sequence: `{row['operator_sequence']}`",
+                "",
+            ]
+        )
+    return "\n".join(lines)
+
+
+def build_counterexample_revision_plan(counterexamples: Sequence[Mapping[str, Any]]) -> tuple[dict[str, Any], str]:
+    grouped: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+    for item in counterexamples:
+        grouped[str(item["reason"])].append(item)
+
+    recommendations = {
+        "goal_depends_on_at_region_excluded_from_P3": {
+            "priority": "server_required",
+            "action": "Validate replacement at_region queries and re-enable push/at_region event extraction.",
+        },
+        "no_skeleton_steps": {
+            "priority": "high",
+            "action": "Inspect predicate trace windows; likely holding/on changes are masked or object-specific goal entities differ from bowl-only assumptions.",
+        },
+        "missing_place_step": {
+            "priority": "high",
+            "action": "Improve release-target fusion and allow final-state goal relation to supply target when release is missing.",
+        },
+        "place_target_or_relation_mismatch": {
+            "priority": "medium",
+            "action": "Use goal-aware target adjudication: when multiple relocate_effect targets exist before release, prefer the BDDL goal-compatible target.",
+        },
+        "missing_turn_on_step": {
+            "priority": "medium",
+            "action": "Inspect activated/deactivated transition window.",
+        },
+        "missing_open_step": {
+            "priority": "medium",
+            "action": "Inspect open/closed transition window.",
+        },
+    }
+
+    plan = {
+        "counterexample_count": len(counterexamples),
+        "reason_counts": {reason: len(items) for reason, items in sorted(grouped.items())},
+        "groups": [],
+    }
+    for reason, items in sorted(grouped.items(), key=lambda pair: (-len(pair[1]), pair[0])):
+        rec = recommendations.get(
+            reason,
+            {"priority": "medium", "action": "Inspect examples and add a reason-specific revision rule."},
+        )
+        plan["groups"].append(
+            {
+                "reason": reason,
+                "count": len(items),
+                "priority": rec["priority"],
+                "recommended_action": rec["action"],
+                "example_demo_ids": [str(item["demo_id"]) for item in items[:8]],
+                "tasks": sorted(set(str(item["task"]) for item in items)),
+            }
+        )
+
+    md = ["# P3 Counterexample-driven Revision Plan", ""]
+    md.extend(
+        [
+            f"- Counterexamples: {plan['counterexample_count']}",
+            f"- Reason counts: `{plan['reason_counts']}`",
+            "",
+            "## Revision groups",
+            "",
+        ]
+    )
+    for group in plan["groups"]:
+        md.extend(
+            [
+                f"### {group['reason']}",
+                "",
+                f"- Count: {group['count']}",
+                f"- Priority: `{group['priority']}`",
+                f"- Action: {group['recommended_action']}",
+                f"- Tasks: `{group['tasks']}`",
+                f"- Examples: `{group['example_demo_ids']}`",
+                "",
+            ]
+        )
+    return plan, "\n".join(md)
 
 
 def write_markdown_reports(
@@ -1019,6 +1356,16 @@ def run_p3_pipeline(package_dir: Path, out_dir: Path, holding_min_frames: int = 
     clauses, clause_report = infer_operator_clauses_v1(object_episodes)
     write_json(out_dir / "p3_operator_clauses_v1.json", clauses)
     (out_dir / "p3_operator_clause_report.md").write_text(clause_report, encoding="utf-8")
+    goal_replay, counterexamples, goal_report_md = replay_goals_against_skeletons(
+        skeletons,
+        goals_by_task=goal_specs_from_mapping(package_dir),
+    )
+    write_json(out_dir / "p3_goal_replay_eval.json", goal_replay)
+    write_jsonl(out_dir / "p3_goal_counterexamples.jsonl", counterexamples)
+    (out_dir / "p3_goal_replay_report.md").write_text(goal_report_md, encoding="utf-8")
+    revision_plan, revision_plan_md = build_counterexample_revision_plan(counterexamples)
+    write_json(out_dir / "p3_counterexample_revision_plan.json", revision_plan)
+    (out_dir / "p3_counterexample_revision_plan.md").write_text(revision_plan_md, encoding="utf-8")
 
     final_summary = {
         "ok": True,
@@ -1034,6 +1381,7 @@ def run_p3_pipeline(package_dir: Path, out_dir: Path, holding_min_frames: int = 
         "skeleton_operator_counts": skeleton_summary["operator_counts"],
         "object_episode_counts": object_episode_summary["episode_type_counts"],
         "operator_clause_count": len(clauses),
+        "goal_replay": goal_replay["summary"],
         "risk_controls": {
             "holding_min_frames": holding_min_frames,
             "merge_gap": merge_gap,

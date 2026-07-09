@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from vlm_nsm.research.p3_symbolic_induction import (
     build_object_centric_episodes,
+    build_counterexample_revision_plan,
     classify_event,
+    canonical_goal_arg,
     infer_plan_skeletons,
     infer_operator_clauses_v1,
     normalize_demo_rows,
     raw_atoms_from_predicates,
+    replay_goals_against_skeletons,
 )
 
 
@@ -113,7 +116,11 @@ def test_fuses_release_with_recent_relation_into_place():
     )
 
     assert summary["operator_counts"]["place"] == 1
-    assert skeletons[0]["steps"][0]["bindings"] == {"obj": "bowl_1", "target": "plate_1"}
+    assert skeletons[0]["steps"][0]["bindings"] == {
+        "obj": "bowl_1",
+        "target": "plate_1",
+        "relation": "on-or-in",
+    }
 
 
 def test_builds_object_episode_and_operator_clauses():
@@ -150,3 +157,70 @@ def test_builds_object_episode_and_operator_clauses():
     assert summary["episode_type_counts"]["pick_place"] == 1
     assert episodes[0]["duration"] == 10
     assert {clause["name"] for clause in clauses} == {"pick", "place"}
+
+
+def test_replays_on_goal_against_place_skeleton():
+    skeletons = [
+        {
+            "demo_id": "demo_file.hdf5::demo_0",
+            "file": "demo_file.hdf5",
+            "demo": "demo_0",
+            "task": "toy_place",
+            "operator_sequence": ["pick", "place"],
+            "steps": [
+                {
+                    "operator": "place",
+                    "bindings": {"obj": "bowl_1", "target": "plate_1", "relation": "on"},
+                    "t_start": 10,
+                    "t_end": 11,
+                }
+            ],
+        }
+    ]
+
+    replay, counterexamples, _md = replay_goals_against_skeletons(
+        skeletons,
+        {"toy_place": [("on", "bowl_1", "plate_1")]},
+    )
+
+    assert replay["summary"]["covered"] == 1
+    assert counterexamples == []
+
+
+def test_at_region_goal_is_blocked_when_excluded_from_p3():
+    skeletons = [
+        {
+            "demo_id": "demo_file.hdf5::demo_0",
+            "file": "demo_file.hdf5",
+            "demo": "demo_0",
+            "task": "toy_push",
+            "operator_sequence": [],
+            "steps": [],
+        }
+    ]
+
+    replay, counterexamples, _md = replay_goals_against_skeletons(
+        skeletons,
+        {"toy_push": [("at_region", "plate_1", "main_table_stove_front_region")]},
+    )
+
+    assert replay["summary"]["blocked_excluded_predicate"] == 1
+    assert counterexamples[0]["reason"] == "goal_depends_on_at_region_excluded_from_P3"
+
+
+def test_canonical_goal_arg_maps_drawer_region_to_level():
+    assert canonical_goal_arg("wooden_cabinet_1_top_region", "in") == "wooden_cabinet_1_top_level"
+
+
+def test_builds_counterexample_revision_plan_by_reason():
+    plan, md = build_counterexample_revision_plan(
+        [
+            {"reason": "missing_place_step", "demo_id": "d1", "task": "t1"},
+            {"reason": "missing_place_step", "demo_id": "d2", "task": "t1"},
+            {"reason": "goal_depends_on_at_region_excluded_from_P3", "demo_id": "d3", "task": "push"},
+        ]
+    )
+
+    assert plan["reason_counts"]["missing_place_step"] == 2
+    assert plan["groups"][0]["reason"] == "missing_place_step"
+    assert "Counterexample-driven" in md
