@@ -10,9 +10,13 @@ from vlm_nsm.research.p5_symbolic_planning import (
     goals_satisfied,
     ground_actions,
     infer_type_universe,
+    filter_domain_by_support,
+    operator_support_by_task,
     required_movable_goal_symbols,
     run_p5_composition_audit,
+    run_p5_loto_planning_audit,
     run_p5_planning_audit,
+    support_excluding_task,
 )
 
 
@@ -202,3 +206,117 @@ def test_run_p5_composition_audit_skips_absent_objects(tmp_path):
     assert summary["attempted"] == 1
     assert summary["solved"] == 1
     assert summary["skipped_absent_object"] == 1
+
+
+def test_support_filter_removes_zero_support_operators():
+    domain = {
+        "operators": [
+            {"name": "pick"},
+            {"name": "place_on"},
+            {"name": "turn_on"},
+        ]
+    }
+
+    filtered = filter_domain_by_support(domain, {"pick": 3, "place_on": 2})
+
+    assert [op["name"] for op in filtered["operators"]] == ["pick", "place_on"]
+    assert filtered["heldout_removed_operators"] == ["turn_on"]
+
+
+def test_loto_support_counts_exclude_heldout_task():
+    support = operator_support_by_task(
+        [
+            {"task": "train_task", "steps": [{"operator": "pick"}, {"operator": "place", "bindings": {"relation": "on"}}]},
+            {"task": "heldout_task", "steps": [{"operator": "turn_on"}]},
+        ]
+    )
+
+    counts = support_excluding_task(support, "heldout_task")
+
+    assert counts["pick"] == 1
+    assert counts["place_on"] == 1
+    assert counts["turn_on"] == 0
+
+
+def test_run_p5_loto_audit_on_toy_artifacts(tmp_path):
+    p3_dir = tmp_path / "p3"
+    p4_dir = tmp_path / "p4"
+    package_dir = tmp_path / "package"
+    out_dir = tmp_path / "out"
+
+    _write_jsonl(
+        p3_dir / "p3_normalized_traces.jsonl",
+        [
+            {
+                "file": "train.hdf5",
+                "demo": "demo_0",
+                "task": "train_place",
+                "t": 0,
+                "T": 2,
+                "trusted_predicates": [["handempty"], ["on", "akita_black_bowl_1", "table"], ["on", "plate_1", "table"]],
+            },
+            {
+                "file": "heldout.hdf5",
+                "demo": "demo_0",
+                "task": "heldout_place",
+                "t": 0,
+                "T": 2,
+                "trusted_predicates": [["handempty"], ["on", "akita_black_bowl_1", "table"], ["on", "plate_1", "table"]],
+            },
+        ],
+    )
+    _write_json(p4_dir / "p4_domain.json", _toy_domain())
+    _write_jsonl(
+        p4_dir / "p4_plan_skeletons.jsonl",
+        [
+            {
+                "demo_id": "train.hdf5::demo_0",
+                "task": "train_place",
+                "steps": [
+                    {"operator": "pick", "bindings": {"obj": "akita_black_bowl_1"}},
+                    {"operator": "place", "bindings": {"obj": "akita_black_bowl_1", "target": "plate_1", "relation": "on"}},
+                ],
+            },
+            {
+                "demo_id": "heldout.hdf5::demo_0",
+                "task": "heldout_place",
+                "steps": [
+                    {"operator": "pick", "bindings": {"obj": "akita_black_bowl_1"}},
+                    {"operator": "place", "bindings": {"obj": "akita_black_bowl_1", "target": "plate_1", "relation": "on"}},
+                ],
+            },
+        ],
+    )
+    _write_json(
+        package_dir / "metadata" / "bddl_task_mapping.json",
+        {
+            "mappings": {
+                "train_place": {
+                    "goals": [
+                        {
+                            "internal_predicate": "on",
+                            "bddl_predicate": "On",
+                            "bddl_args": ["akita_black_bowl_1", "plate_1"],
+                            "grounded_args": [{}, {}],
+                        }
+                    ]
+                },
+                "heldout_place": {
+                    "goals": [
+                        {
+                            "internal_predicate": "on",
+                            "bddl_predicate": "On",
+                            "bddl_args": ["akita_black_bowl_1", "plate_1"],
+                            "grounded_args": [{}, {}],
+                        }
+                    ]
+                },
+            }
+        },
+    )
+
+    summary = run_p5_loto_planning_audit(p3_dir, p4_dir, package_dir, out_dir, max_depth=3)
+
+    assert summary["solved_splits"] == 2
+    assert summary["solved"] == 2
+    assert (out_dir / "p5_loto_split_summary.jsonl").exists()

@@ -27,6 +27,7 @@ from vlm_nsm.research.p3_symbolic_induction import (
     write_jsonl,
 )
 from vlm_nsm.research.p4_domain_export import write_text
+from vlm_nsm.research.p4_domain_export import operator_name_for_step
 
 
 State = frozenset[Atom]
@@ -671,4 +672,222 @@ def render_composition_report(summary: Mapping[str, Any], rows: Sequence[Mapping
                 "",
             ]
         )
+    return "\n".join(lines)
+
+
+def operator_support_by_task(skeleton_rows: Sequence[Mapping[str, Any]]) -> dict[str, Counter[str]]:
+    """Count P4 operator evidence by task template."""
+    by_task: dict[str, Counter[str]] = defaultdict(Counter)
+    for row in skeleton_rows:
+        task = str(row.get("task", ""))
+        for step in row.get("steps", []):
+            op = operator_name_for_step(step, split_place=True)
+            by_task[task][op] += 1
+    return dict(by_task)
+
+
+def support_excluding_task(support_by_task: Mapping[str, Counter[str]], heldout_task: str) -> Counter[str]:
+    counts: Counter[str] = Counter()
+    for task, task_counts in support_by_task.items():
+        if task == heldout_task:
+            continue
+        counts.update(task_counts)
+    return counts
+
+
+def filter_domain_by_support(domain: Mapping[str, Any], support_counts: Mapping[str, int]) -> dict[str, Any]:
+    """Remove operators with no training support in a held-out split."""
+    filtered = dict(domain)
+    operators = []
+    removed = []
+    for op in domain.get("operators", []):
+        name = str(op["name"])
+        support = int(support_counts.get(name, 0))
+        if support <= 0:
+            removed.append(name)
+            continue
+        item = dict(op)
+        item["split_train_support_count"] = support
+        operators.append(item)
+    filtered["operators"] = operators
+    filtered["heldout_removed_operators"] = removed
+    return filtered
+
+
+def expected_goal_operator_families(goals: Sequence[Mapping[str, Any]]) -> set[str]:
+    expected: set[str] = set()
+    for goal in goals:
+        pred = str(tuple(goal["atom"])[0])
+        if pred == "on":
+            expected.update({"pick", "place_on"})
+        elif pred == "in":
+            expected.update({"open", "pick", "place_in"})
+        elif pred == "open":
+            expected.add("open")
+        elif pred == "activated":
+            expected.add("turn_on")
+        elif pred == "at_region":
+            expected.add("push_to_region")
+    return expected
+
+
+def run_p5_loto_planning_audit(
+    p3_dir: Path,
+    p4_dir: Path,
+    package_dir: Path,
+    out_dir: Path,
+    max_depth: int = 4,
+    max_expansions: int = 20000,
+) -> dict[str, Any]:
+    """Leave-one-task-template-out planning audit.
+
+    For each task template, remove its P4 skeleton evidence from the operator
+    support table. Operators with zero remaining train support are excluded from
+    that split's domain before planning held-out demos.
+    """
+    base_domain = read_json(p4_dir / "p4_domain.json")
+    skeleton_rows = read_jsonl(p4_dir / "p4_plan_skeletons.jsonl")
+    support_by_task = operator_support_by_task(skeleton_rows)
+    normalized_rows = read_jsonl(p3_dir / "p3_normalized_traces.jsonl")
+    initial_by_demo = group_initial_states(normalized_rows)
+    goals_by_task = goal_specs_from_mapping(package_dir)
+
+    rows: list[dict[str, Any]] = []
+    split_rows: list[dict[str, Any]] = []
+    for heldout_task in sorted(goals_by_task):
+        support_counts = support_excluding_task(support_by_task, heldout_task)
+        split_domain = filter_domain_by_support(base_domain, support_counts)
+        available_ops = {str(op["name"]) for op in split_domain.get("operators", [])}
+        goals = list(goals_by_task.get(heldout_task, []))
+        expected_ops = expected_goal_operator_families(goals)
+        missing_expected_ops = sorted(expected_ops - available_ops)
+        heldout_problems = [
+            problem for problem in sorted(initial_by_demo.values(), key=lambda item: item["demo_id"])
+            if str(problem["task"]) == heldout_task
+        ]
+
+        split_status_counts: Counter[str] = Counter()
+        for problem in heldout_problems:
+            initial_state = problem["state"]
+            universe = infer_type_universe(initial_state, goals, skeleton_steps=[])
+            actions = ground_actions(split_domain, universe)
+            plan, stats = bfs_plan(
+                initial_state,
+                goals,
+                actions,
+                max_depth=max_depth,
+                max_expansions=max_expansions,
+            )
+            issues = validate_plan_grounding(plan or [], initial_state) if plan is not None else []
+            if plan is None:
+                status = "failed_missing_operator" if missing_expected_ops else "failed"
+            elif issues:
+                status = "invalid_plan"
+            else:
+                status = "solved"
+            split_status_counts[status] += 1
+            rows.append(
+                {
+                    "heldout_task": heldout_task,
+                    "demo_id": problem["demo_id"],
+                    "status": status,
+                    "reason": stats["reason"],
+                    "plan_length": len(plan) if plan is not None else None,
+                    "plan": [action.to_dict() for action in plan] if plan is not None else [],
+                    "grounding_issues": issues,
+                    "available_operators": sorted(available_ops),
+                    "missing_expected_operators": missing_expected_ops,
+                    "train_support_counts": dict(sorted(support_counts.items())),
+                    "removed_operators": list(split_domain.get("heldout_removed_operators", [])),
+                    "ground_action_count": len(actions),
+                    "search": stats,
+                }
+            )
+        split_rows.append(
+            {
+                "heldout_task": heldout_task,
+                "demo_count": len(heldout_problems),
+                "status_counts": dict(split_status_counts),
+                "solved": split_status_counts.get("solved", 0),
+                "failed": split_status_counts.get("failed", 0) + split_status_counts.get("failed_missing_operator", 0),
+                "invalid_plan": split_status_counts.get("invalid_plan", 0),
+                "available_operators": sorted(available_ops),
+                "missing_expected_operators": missing_expected_ops,
+                "train_support_counts": dict(sorted(support_counts.items())),
+            }
+        )
+
+    summary = summarize_loto_rows(split_rows, rows, max_depth=max_depth, max_expansions=max_expansions)
+    write_json(out_dir / "p5_loto_planning_summary.json", summary)
+    write_jsonl(out_dir / "p5_loto_planning_results.jsonl", rows)
+    write_jsonl(out_dir / "p5_loto_split_summary.jsonl", split_rows)
+    write_text(out_dir / "p5_loto_planning_report.md", render_loto_report(summary, split_rows))
+    return summary
+
+
+def summarize_loto_rows(
+    split_rows: Sequence[Mapping[str, Any]],
+    rows: Sequence[Mapping[str, Any]],
+    max_depth: int,
+    max_expansions: int,
+) -> dict[str, Any]:
+    status_counts = Counter(str(row["status"]) for row in rows)
+    solved = status_counts.get("solved", 0)
+    total = len(rows)
+    solved_splits = sum(1 for row in split_rows if int(row.get("solved", 0)) == int(row.get("demo_count", 0)))
+    failed_splits = len(split_rows) - solved_splits
+    return {
+        "ok": status_counts.get("invalid_plan", 0) == 0,
+        "stage": "P5-C",
+        "split_count": len(split_rows),
+        "problem_count": total,
+        "solved": solved,
+        "failed": total - solved - status_counts.get("invalid_plan", 0),
+        "invalid_plan": status_counts.get("invalid_plan", 0),
+        "status_counts": dict(status_counts),
+        "solved_splits": solved_splits,
+        "failed_splits": failed_splits,
+        "heldout_task_success_rate": solved_splits / len(split_rows) if split_rows else 0.0,
+        "heldout_demo_success_rate": solved / total if total else 0.0,
+        "max_depth": max_depth,
+        "max_expansions": max_expansions,
+        "status": "P5_LOTO_AUDIT_COMPLETE",
+        "boundary": "Strict evidence-ablation LOTO: operators with zero train support are removed from each split.",
+    }
+
+
+def render_loto_report(summary: Mapping[str, Any], split_rows: Sequence[Mapping[str, Any]]) -> str:
+    lines = [
+        "# P5-C Leave-one-task-template-out Planning Audit",
+        "",
+        f"- Status: `{summary['status']}`",
+        f"- Splits: {summary['split_count']}",
+        f"- Problems: {summary['problem_count']}",
+        f"- Solved demos: {summary['solved']}/{summary['problem_count']}",
+        f"- Solved splits: {summary['solved_splits']}/{summary['split_count']}",
+        f"- Invalid plans: {summary['invalid_plan']}",
+        f"- Demo success rate: {summary['heldout_demo_success_rate']:.3f}",
+        f"- Task success rate: {summary['heldout_task_success_rate']:.3f}",
+        "",
+        "## Split status",
+        "",
+        "| Held-out task | solved | failed | missing expected operators | available operators |",
+        "|---|---:|---:|---|---|",
+    ]
+    for row in split_rows:
+        lines.append(
+            f"| {row['heldout_task']} | {row['solved']}/{row['demo_count']} | {row['failed']} | "
+            f"`{row['missing_expected_operators']}` | `{row['available_operators']}` |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Interpretation",
+            "",
+            "This is a strict evidence-ablation audit. For each held-out task template,",
+            "operator families with zero support in the remaining tasks are removed.",
+            "Failures therefore expose which operators currently rely on single-template evidence.",
+            "",
+        ]
+    )
     return "\n".join(lines)
