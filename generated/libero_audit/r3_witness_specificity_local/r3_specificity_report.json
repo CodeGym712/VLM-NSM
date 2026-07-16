@@ -1,0 +1,180 @@
+{
+  "stage": "R3",
+  "status": "SPECIFICITY_PASS",
+  "candidate_edit": [
+    "open",
+    "?container"
+  ],
+  "checks": {
+    "ablated_shortcut_succeeds": true,
+    "target_closed_rejected": true,
+    "target_open_allowed": true,
+    "wrong_container_open_rejected": true,
+    "wrong_object_role_rejected": true,
+    "pick_unchanged": true,
+    "open_unchanged": true,
+    "place_on_unchanged": true
+  },
+  "evidence": {
+    "target_closed": {
+      "ok": false,
+      "steps": [
+        {
+          "operator": "pick",
+          "args": [
+            "bowl"
+          ],
+          "ok": true,
+          "reason": "ok"
+        },
+        {
+          "operator": "place_in",
+          "args": [
+            "bowl",
+            "drawer"
+          ],
+          "ok": false,
+          "reason": "missing_positive:('open', 'drawer')"
+        }
+      ],
+      "final_state": [
+        [
+          "closed",
+          "drawer"
+        ],
+        [
+          "holding",
+          "bowl"
+        ],
+        [
+          "on",
+          "bowl",
+          "table"
+        ]
+      ]
+    },
+    "target_open": {
+      "ok": true,
+      "steps": [
+        {
+          "operator": "pick",
+          "args": [
+            "bowl"
+          ],
+          "ok": true,
+          "reason": "ok"
+        },
+        {
+          "operator": "place_in",
+          "args": [
+            "bowl",
+            "drawer"
+          ],
+          "ok": true,
+          "reason": "ok"
+        }
+      ],
+      "final_state": [
+        [
+          "handempty"
+        ],
+        [
+          "in",
+          "bowl",
+          "drawer"
+        ],
+        [
+          "on",
+          "bowl",
+          "table"
+        ],
+        [
+          "open",
+          "drawer"
+        ]
+      ]
+    },
+    "wrong_container_open": {
+      "ok": false,
+      "steps": [
+        {
+          "operator": "pick",
+          "args": [
+            "bowl"
+          ],
+          "ok": true,
+          "reason": "ok"
+        },
+        {
+          "operator": "place_in",
+          "args": [
+            "bowl",
+            "drawer"
+          ],
+          "ok": false,
+          "reason": "missing_positive:('open', 'drawer')"
+        }
+      ],
+      "final_state": [
+        [
+          "closed",
+          "drawer"
+        ],
+        [
+          "holding",
+          "bowl"
+        ],
+        [
+          "on",
+          "bowl",
+          "table"
+        ],
+        [
+          "open",
+          "other_drawer"
+        ]
+      ]
+    },
+    "wrong_object_role": {
+      "ok": false,
+      "steps": [
+        {
+          "operator": "pick",
+          "args": [
+            "bowl"
+          ],
+          "ok": true,
+          "reason": "ok"
+        },
+        {
+          "operator": "place_in",
+          "args": [
+            "bowl",
+            "drawer"
+          ],
+          "ok": false,
+          "reason": "missing_positive:('open', 'bowl')"
+        }
+      ],
+      "final_state": [
+        [
+          "holding",
+          "bowl"
+        ],
+        [
+          "on",
+          "bowl",
+          "table"
+        ],
+        [
+          "open",
+          "drawer"
+        ]
+      ]
+    }
+  },
+  "scope_note": "Local symbolic contract audit only; not evidence of learned revision or OOD generalization.",
+  "input_sha256": {
+    "domain": "d7f31437d4d4daba724f7fc5306c944eb5fc7a3c5b5f7333339c0a7830412e3d"
+  }
+}

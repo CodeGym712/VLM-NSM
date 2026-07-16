@@ -1,0 +1,27 @@
+{
+  "stage": "R3",
+  "phase": "specificity_confound_free_local",
+  "status": "PASS",
+  "candidate_edit": [
+    "open",
+    "?container"
+  ],
+  "family_summary": {
+    "binding_specificity": {
+      "total": 4,
+      "passed": 4
+    },
+    "target_closed": {
+      "total": 3,
+      "passed": 3
+    },
+    "target_open": {
+      "total": 2,
+      "passed": 2
+    }
+  },
+  "scope_note": "Local symbolic precondition audit only; not evidence of learned revision or OOD generalization.",
+  "input_sha256": {
+    "domain": "d7f31437d4d4daba724f7fc5306c944eb5fc7a3c5b5f7333339c0a7830412e3d"
+  }
+}
