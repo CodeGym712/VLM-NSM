@@ -1,148 +1,109 @@
-# VLM-NSM: Language-Aligned Symbolic Planning with Symbol-Conditioned Embodied Skill Execution
+# VLM-NSM
+### Language-aligned symbolic planning and hybrid robot skill execution
 
-Independent extension project inspired by the original NSM pipeline. Does not modify the original NSM repository.
+A research prototype that connects structured language goals, symbolic validation and planning, and robot skill execution. The public code includes Hanoi and block-stacking tasks, Qwen text-parser integrations, and a robosuite stacking pipeline with scripted and behavior-cloning controllers.
 
-For a Python 3.10 Windows setup and the supported lightweight test command, see [Windows local development](docs/local-development.md).
+**Start here:** [Local setup](docs/local-development.md) · [Reproduction guide](docs/reproduction.md) · [Results and limitations](docs/results-and-limitations.md) · [Demo guide](docs/demo_guide.md)
 
-## Three-Layer Architecture
+> **Scope:** this README describes the code and reports in this repository. It does not claim to release the separate CALVIN / VLA-Adapter research workspace. Simulation results are not real-robot deployment results.
 
-```text
-Layer 1: Language-Conditioned Symbolic Goal Planning
-  NL Instruction → GoalParser → Alignment → PDDL → Planner → Symbolic Plan
-  ─────────────────────────────────────────────────────────────
-  Mock / Qwen2.5-Instruct text parser
-  Alignment layer (object/predicate whitelist, type check, alias repair, completeness check)
-  Dynamic PDDL problem generator
-  Internal planner or Metric-FF adapter
-  Symbolic state executor
-  Predicate monitor
+## What this project implements
 
-Layer 2: Language-Aligned Symbolic Planning Evaluation
-  Benchmarks → Ablations → Metrics → Report Tables
-  ─────────────────────────────────────────────────
-  Language variation (easy + hard sets)
-  Prompt comparison (full / medium / weak)
-  Alignment mode ablation (5 modes)
-  Model comparison (32B vs 14B)
-  Failure case analysis & repair statistics
+| Component | Implementation | Boundary |
+|---|---|---|
+| Goal parsing | Mock parser, local Qwen2.5 text parser, optional online parser integrations | Mock, cached and live-model runs must be reported separately |
+| Symbolic alignment | Schema checks, object/predicate whitelists, type checking, alias repair and goal-completeness checks | Task-specific symbols and repair rules |
+| Planning | PDDL problem generation, internal Hanoi/stacking planners, optional Metric-FF adapter | Symbolic validity does not imply physical success |
+| Skill execution | Phase-based stacking; scripted, replay and BC paths; opt-in skill-executor interface | Canonical learned control is limited to `reach_pick` |
+| Evaluation | Language-variation experiments, alignment/prompt ablations, simulation reports and failure analysis | Historical tables have different settings; see limitations |
 
-Layer 3: Embodied Skill Execution with Learnable Controller Interface
-  Symbolic Plan → SkillStepDecomposer → Controller → Env → Monitors → Demo Recorder
-  ────────────────────────────────────────────────────────────────────────────────
-  SymbolConditionedObservationFilter
-  Scripted / Replay / Learned controllers
-  TerminationFailureMonitor, PhysicalPredicateExtractor, PredicateMonitor
-  DemonstrationRecorder (npz for BC training)
+## Architecture
+
+```mermaid
+flowchart TD
+    I[Natural-language instruction] --> P[Mock / Qwen goal parser]
+    P --> A[Schema, object and predicate alignment]
+    A --> G[Structured goal / PDDL problem]
+    G --> S[Task-specific symbolic planner]
+    S --> X[Symbolic execution and monitoring]
+    S --> E[Stacking execution path]
+    E --> C[Learned reach_pick + scripted remaining phases]
+    C --> R[Robosuite environment]
+    R --> M[Physical predicate checks and episode metrics]
 ```
 
-## Quick Start
+This is a modular planning-and-control prototype, not an end-to-end language-conditioned VLA policy. The canonical stacking path uses learned control for reaching and scripted control for the other phases. The [skill-interface design](docs/stage_19_skill_control_plan.md) documents a separate opt-in execution path.
 
-```bash
-cd /path/to/VLM-NSM
-# Activate environment (conda or venv with torch/transformers installed)
-conda activate nsm
+## Get started without a GPU or model download
 
-# Run tests
-python tests/run_all.py
-
-# Hanoi 3/4/5 symbolic experiments
-bash scripts/run_hanoi_3.sh
-bash scripts/run_hanoi_4.sh
-bash scripts/run_hanoi_5.sh
-
-# Language variation evaluations
-# Easy set (8 Hanoi + 7 Stacking samples):
-python -m vlm_nsm.experiments.run_language_variation \
-  --task hanoi --n_blocks 3 --parser mock --difficulty easy
-
-# Hard set (22 Hanoi + 22 Stacking samples):
-python -m vlm_nsm.experiments.run_language_variation \
-  --task hanoi --n_blocks 3 --parser mock --difficulty hard
-```
-
-On Windows with the minimal environment, use the curated local profile instead of `tests/run_all.py`:
+The supported lightweight profile uses **Windows + Python 3.10**. It excludes simulation, model execution and checks that depend on untracked experiment artifacts.
 
 ```powershell
-python scripts\run_local_tests.py
+git clone https://github.com/CodeGym712/VLM-NSM.git
+cd VLM-NSM
+py -3.10 -m venv .venv-minimal
+.\.venv-minimal\Scripts\Activate.ps1
+python -m pip install -e .
+python scripts\run_local_tests.py -q
 ```
 
-If Metric-FF is not auto-discovered, set:
+See [Windows local development](docs/local-development.md) for activation troubleshooting, optional dependencies and the exact test-profile boundaries. A fresh clone does not include every checkpoint or generated artifact required by historical experiments.
+
+## Run a symbolic language-variation example
+
+From an environment with the package installed:
+
 ```bash
-export METRIC_FF_BIN=/path/to/metric-ff/ff
+python -m vlm_nsm.experiments.run_language_variation \
+  --task hanoi --n_blocks 3 --parser mock --difficulty easy
 ```
 
-## Qwen2.5 Language Variation Evaluation
+The mock parser is a deterministic pipeline check; its results do not measure Qwen language understanding. See the [reproduction guide](docs/reproduction.md) before running local Qwen, API-based evaluation or simulation.
 
-Evaluate Qwen2.5-32B-Instruct or Qwen2.5-14B-Instruct on language variation benchmarks:
+## Recorded simulation results
 
-```bash
-export PYTHONPATH="${PYTHONPATH:-}:$(pwd)/src"
+The following are **historical reported results**, not reruns performed for this documentation update. The [Stage 10 deployment table](generated/report_tables/stage_10/deployment_policy_comparison.md) reports:
 
-# Single sample smoke test
-CUDA_VISIBLE_DEVICES=0,1,2,3 python -m vlm_nsm.experiments.run_language_variation \
-  --task hanoi --n_blocks 3 --parser qwen_text \
-  --model_path /path/to/Qwen2.5-32B-Instruct \
-  --model_name qwen25_32b --difficulty hard --max_samples 1
+| Policy | Evaluation size | Reported success |
+|---|---:|---:|
+| Scripted-only | 100 episodes | 88/100 |
+| DAgger reach-only hybrid | 100 episodes | 92/100 |
+| DAgger reach-only hybrid, three runs | 50 episodes per run | 96%, 90%, 94% |
 
-# Full hard set with prompt/alignment comparison
-CUDA_VISIBLE_DEVICES=0,1,2,3 python -m vlm_nsm.experiments.run_language_variation \
-  --task hanoi --n_blocks 3 --parser qwen_text \
-  --model_path /path/to/Qwen2.5-32B-Instruct \
-  --model_name qwen25_32b --difficulty hard \
-  --prompt_variant weak --alignment_mode no_alignment
+These rows do not establish statistical significance, paired comparisons, an environment failure floor, or deterministic multi-seed reproducibility. The simulation documentation states that the seed flag is metadata and does not seed robosuite environment initialization.
 
-# Summarize results
-python -m vlm_nsm.experiments.summarize_language_variation
+The [Stage 10 E2E summary](generated/report_tables/stage_10/e2e_demo_summary.md) reports **5/5 mock-parser demos** using the same physical stacking outcome. This demonstrates pipeline integration, not general language understanding or five distinct manipulation skills.
 
-# Export report tables
-python -m vlm_nsm.experiments.export_report_tables
-```
+Language-evaluation tables contain unresolved aggregation inconsistencies. No aggregate Qwen accuracy is promoted here. See [results and limitations](docs/results-and-limitations.md).
 
-## Report Tables
+## Demo and artifacts
 
-After running evaluations:
+The repository includes [recording instructions](docs/demo_guide.md) and a [media manifest](assets/demo/v0_1_1/demo_media_manifest.md), but no committed MP4/PNG demo media was found in the tree reviewed for this update. Recording support is not a published video.
 
-- `report_table_model_comparison.csv` — per model/task/difficulty
-- `report_table_prompt_comparison.csv` — full vs weak prompt
-- `report_table_alignment_benefit.csv` — with/without alignment
-- `report_table_by_category.csv` — per category breakdown
-- `qwen_failure_cases.csv` — failed sample details
-- `qwen_alignment_repair_stats.csv` — alignment repair statistics
+Simulation requires the configured robosuite/MuJoCo environment, checkpoint and execution config. Use the [artifact checklist](docs/reproduction.md#simulation-and-artifact-checklist) to identify missing inputs before launching a run.
 
-## Results
+## Repository navigation
 
-All results in `generated/results/`.
-Download in `generated/logs/qwen_outputs/`.
+| Path | Purpose |
+|---|---|
+| [src/vlm_nsm/core](src/vlm_nsm/core) | Goal parsing, alignment, PDDL and planning interfaces |
+| [src/vlm_nsm/experiments](src/vlm_nsm/experiments) | Experiments, demos and report generation |
+| [src/vlm_nsm/learning](src/vlm_nsm/learning) | BC training/evaluation utilities |
+| [src/vlm_nsm/skills](src/vlm_nsm/skills) | Skill command and plan interfaces |
+| [src/vlm_nsm/execution](src/vlm_nsm/execution) | Execution adapters |
+| [data/language_variations](data/language_variations) | Easy/hard language-variation inputs |
+| [tests](tests) | Tests; use the documented local profile |
+| [generated/report_tables](generated/report_tables) | Committed historical report tables |
+| [docs](docs) | Protocols, experiment reports and setup guides |
 
-## Current Scope
+## Reading order
 
-- Hanoi 3/4/5 symbolic pipeline (internal planner + Metric-FF)
-- Stacking 3/4/5 symbolic pipeline (internal planner)
-- Dynamic PDDL problem generation
-- Symbolic execution and predicate monitoring
-- Language variation benchmark (easy + hard sets, 8 categories)
-- Qwen2.5-32B-Instruct and Qwen2.5-14B-Instruct evaluation
-- Alignment layer with object/predicate whitelist, type checking, alias repair, goal completeness
-- Prompt variant comparison (full vs medium vs weak)
-- Alignment mode ablation (full vs no_alignment vs no_repair vs no_alias_repair vs no_completeness_repair)
-- Mock-first embodied stacking demo
-- Alignment ablation and fixed-goal baseline
+1. [Reproduction guide](docs/reproduction.md): choose a runnable tier and check prerequisites.
+2. [Results and limitations](docs/results-and-limitations.md): understand what the reports support.
+3. [Simulation protocol](docs/simulation_protocol.md): inspect controller phases and scoring.
+4. [RGB grounding report](docs/stage_18_rgb_detector_pipeline.md): later perception work and comparison caveats.
+5. [Skill-control plan](docs/stage_19_skill_control_plan.md): implemented interfaces versus next steps.
 
-## Embodied Skill Execution (Stage 7A)
+## Attribution and reuse
 
-- SymbolConditionedObservationFilter: task-relevant observation selection using symbolic action context
-- SkillStepDecomposer: fixed template for move → 6-step decomposition
-- TerminationFailureMonitor: step-level termination detection
-- ScriptedController and ReplayController
-- DemonstrationRecorder: npz recording for BC training
-- Reality Gap metric: (N_symbolic - N_physical) / N_symbolic × 100%
-
-## Future Scope
-
-- Real robosuite-backed stacking wrapper refinement
-- Qwen2.5-VL image parser
-- MLP Behavior Cloning
-- Temporal Behavior Cloning
-- Diffusion Policy
-- Hybrid Controller (learned + scripted)
-- Fast Downward adapter
+The earlier project description identifies this as an independent extension inspired by an NSM pipeline; it does not modify the original NSM repository. The code integrates third-party model, planning and simulation tools. Consult their individual terms for code, model weights and data. No root license file was present in the reviewed tree; this documentation update does not add or assume a repository-wide license.
